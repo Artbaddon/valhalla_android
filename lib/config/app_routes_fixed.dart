@@ -18,6 +18,9 @@ import 'package:valhalla_android/modules/payments/screens/payments_home_page.dar
 import 'package:valhalla_android/modules/payments/screens/payment_methods_page.dart';
 import 'package:valhalla_android/modules/payments/screens/payment_method_form_page.dart';
 import 'package:valhalla_android/modules/payments/screens/payment_history_page.dart';
+// Reservations module
+import 'package:valhalla_android/modules/reservations/screens/reservations_home_page.dart';
+import 'package:valhalla_android/modules/reservations/screens/reservation_form_page.dart';
 
 class AppRoutes {
   // Route names
@@ -37,6 +40,9 @@ class AppRoutes {
   static const String paymentMethods = '/payment-methods';
   static const String paymentMethodForm = '/payment-method-form';
   static const String paymentHistory = '/payment-history';
+  // Reservations
+  static const String reservationsHome = '/reservations-home';
+  static const String reservationForm = '/reservation-form';
 
   // Route generator
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -116,6 +122,16 @@ class AppRoutes {
       case paymentHistory:
         return MaterialPageRoute(
           builder: (_) => const PaymentHistoryPage(),
+          settings: settings,
+        );
+      case reservationsHome:
+        return MaterialPageRoute(
+          builder: (_) => const ReservationsHomePage(),
+          settings: settings,
+        );
+      case reservationForm:
+        return MaterialPageRoute(
+          builder: (_) => const ReservationFormPage(),
           settings: settings,
         );
       default:

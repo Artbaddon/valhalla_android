@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:valhalla_android/config/app_colors.dart';
 import 'package:valhalla_android/widgets/app_bottom_nav.dart';
 import 'package:valhalla_android/modules/payments/screens/payments_home_page.dart';
+import 'package:valhalla_android/modules/reservations/screens/reservations_home_page.dart';
 
 // Owner dashboard with embedded tabs (mirrors admin structural approach)
 class HomeOwnerPage extends StatefulWidget {
@@ -18,7 +19,9 @@ class _HomeOwnerPageState extends State<HomeOwnerPage> {
   @override
   Widget build(BuildContext context) {
     Widget body;
-    if (_index == 3) {
+    if (_index == 2) {
+      body = const ReservationsHomePage();
+    } else if (_index == 3) {
       body = const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: PaymentsHomePage(),
