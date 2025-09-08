@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:valhalla_android/config/app_colors.dart';
+import 'package:valhalla_android/widgets/app_bottom_nav.dart';
 
-// Owner module: Change password within profile
-const background = Color.fromRGBO(243, 243, 255, 1);
-const blue = Color.fromRGBO(48, 51, 146, 1);
-const purple = Color.fromRGBO(73, 76, 162, 1);
-const lightPurple = Color.fromRGBO(73, 76, 162, 0.9);
-
-class ChangePasswordProfileOwnerPage extends StatelessWidget {
+class ChangePasswordProfileOwnerPage extends StatefulWidget {
   const ChangePasswordProfileOwnerPage({super.key});
+  @override
+  State<ChangePasswordProfileOwnerPage> createState() => _ChangePasswordProfileOwnerPageState();
+}
+
+class _ChangePasswordProfileOwnerPageState extends State<ChangePasswordProfileOwnerPage> {
+  int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: background,
+        backgroundColor: AppColors.background,
         centerTitle: true,
-        title: const Text('Valhalla', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: purple)),
+        title: const Text('Valhalla', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.purple)),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(CupertinoIcons.bell, color: purple, size: 28)),
+          IconButton(onPressed: () {}, icon: const Icon(CupertinoIcons.bell, color: AppColors.purple, size: 28)),
         ],
       ),
       body: SingleChildScrollView(
@@ -40,7 +42,11 @@ class ChangePasswordProfileOwnerPage extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomNavStub(),
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: _tab,
+        isAdmin: false,
+        onTap: (i) => setState(() => _tab = i),
+      ),
     );
   }
 }
@@ -50,8 +56,8 @@ class _BackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: purple, borderRadius: BorderRadius.circular(30)),
-      child: IconButton(onPressed: () {}, icon: const Icon(CupertinoIcons.chevron_back, color: background)),
+      decoration: BoxDecoration(color: AppColors.purple, borderRadius: BorderRadius.circular(30)),
+      child: IconButton(onPressed: () {}, icon: const Icon(CupertinoIcons.chevron_back, color: AppColors.background)),
     );
   }
 }
@@ -64,7 +70,7 @@ class _PasswordField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: purple)),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.purple)),
         const SizedBox(height: 6),
         TextField(
           obscureText: true,
@@ -88,35 +94,14 @@ class _SubmitButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: () {},
         style: ElevatedButton.styleFrom(
-          backgroundColor: lightPurple,
+          backgroundColor: AppColors.purple.withOpacity(.9),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
-        child: const Text('Cambiar contraseña', style: TextStyle(fontSize: 16, color: background)),
+        child: const Text('Cambiar contraseña', style: TextStyle(fontSize: 16, color: AppColors.background)),
       ),
     );
   }
 }
 
-class _BottomNavStub extends StatelessWidget {
-  const _BottomNavStub();
-  @override
-  Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      backgroundColor: background,
-      selectedItemColor: blue,
-      unselectedItemColor: Colors.grey,
-      showSelectedLabels: false,
-      showUnselectedLabels: false,
-      type: BottomNavigationBarType.fixed,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(CupertinoIcons.house_fill), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(CupertinoIcons.car), label: 'Car'),
-        BottomNavigationBarItem(icon: Icon(CupertinoIcons.calendar), label: 'Calendar'),
-        BottomNavigationBarItem(icon: Icon(CupertinoIcons.money_dollar_circle), label: 'Money'),
-        BottomNavigationBarItem(icon: Icon(CupertinoIcons.cube_box), label: 'Box'),
-        BottomNavigationBarItem(icon: Icon(CupertinoIcons.person), label: 'Profile'),
-      ],
-    );
-  }
-}
+// Bottom nav stub removed; AppBottomNav used instead.

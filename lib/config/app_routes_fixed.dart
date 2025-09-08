@@ -13,6 +13,11 @@ import 'package:valhalla_android/modules/admin/screens/change_password_profile_a
 import 'package:valhalla_android/screens/home_owner.dart'; // existing stateful with embedded profile
 import 'package:valhalla_android/modules/owner/screens/detail_owner_page.dart';
 import 'package:valhalla_android/modules/owner/screens/change_password_profile_owner_page.dart';
+// Payments module
+import 'package:valhalla_android/modules/payments/screens/payments_home_page.dart';
+import 'package:valhalla_android/modules/payments/screens/payment_methods_page.dart';
+import 'package:valhalla_android/modules/payments/screens/payment_method_form_page.dart';
+import 'package:valhalla_android/modules/payments/screens/payment_history_page.dart';
 
 class AppRoutes {
   // Route names
@@ -27,6 +32,11 @@ class AppRoutes {
   static const String changePasswordProfileAdmin = '/change-password-profile-admin';
   static const String changePasswordProfileOwner = '/change-password-profile-owner';
   static const String recoverPassword = '/recover-password';
+  // Payments
+  static const String paymentsHome = '/payments-home';
+  static const String paymentMethods = '/payment-methods';
+  static const String paymentMethodForm = '/payment-method-form';
+  static const String paymentHistory = '/payment-history';
 
   // Route generator
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -86,6 +96,26 @@ class AppRoutes {
       case recoverPassword:
         return MaterialPageRoute(
           builder: (_) => const RecoverPage(),
+          settings: settings,
+        );
+      case paymentsHome:
+        return MaterialPageRoute(
+          builder: (_) => const PaymentsHomePage(),
+          settings: settings,
+        );
+      case paymentMethods:
+        return MaterialPageRoute(
+          builder: (_) => const PaymentMethodsPage(),
+          settings: settings,
+        );
+      case paymentMethodForm:
+        return MaterialPageRoute(
+          builder: (_) => const PaymentMethodFormPage(),
+          settings: settings,
+        );
+      case paymentHistory:
+        return MaterialPageRoute(
+          builder: (_) => const PaymentHistoryPage(),
           settings: settings,
         );
       default:

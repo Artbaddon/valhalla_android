@@ -3,13 +3,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:valhalla_android/config/app_colors.dart';
 import 'package:valhalla_android/widgets/app_bottom_nav.dart';
 
-class DetailOwnerPage extends StatefulWidget {
-  const DetailOwnerPage({super.key});
+// Admin module: Reservation screen (renamed from detail duplication example)
+
+class ReservationAdminPage extends StatefulWidget {
+  const ReservationAdminPage({super.key});
+
   @override
-  State<DetailOwnerPage> createState() => _DetailOwnerPageState();
+  State<ReservationAdminPage> createState() => _ReservationAdminPageState();
 }
 
-class _DetailOwnerPageState extends State<DetailOwnerPage> {
+class _ReservationAdminPageState extends State<ReservationAdminPage> {
   int _tab = 0;
 
   @override
@@ -22,7 +25,10 @@ class _DetailOwnerPageState extends State<DetailOwnerPage> {
         centerTitle: true,
         title: const Text('Valhalla', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.purple)),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(CupertinoIcons.bell, color: AppColors.purple, size: 28)),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(CupertinoIcons.bell, color: AppColors.purple, size: 28),
+          ),
         ],
       ),
       body: Padding(
@@ -40,9 +46,7 @@ class _DetailOwnerPageState extends State<DetailOwnerPage> {
             const SizedBox(height: 16),
             Expanded(
               child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 color: AppColors.lila,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
@@ -51,30 +55,16 @@ class _DetailOwnerPageState extends State<DetailOwnerPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Center(
-                          child: Text(
-                            'Nuevas Amenidades',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.blue,
-                            ),
-                          ),
+                          child: Text('Nuevas Amenidades', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.blue)),
                         ),
                         SizedBox(height: 20),
                         Center(
-                          child: Image.network(
-                            'assets/img/megafono.png',
-                            height: 60,
-                          ),
+                          child: Image.asset('assets/img/megafono.png', height: 60),
                         ),
                         SizedBox(height: 20),
                         Text(
                           'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.\n\nContrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.purple,
-                            height: 1.5,
-                          ),
+                          style: const TextStyle(fontSize: 14, color: AppColors.purple, height: 1.5),
                         ),
                       ],
                     ),
@@ -87,8 +77,11 @@ class _DetailOwnerPageState extends State<DetailOwnerPage> {
       ),
       bottomNavigationBar: AppBottomNav(
         currentIndex: _tab,
-        isAdmin: false,
-        onTap: (i) => setState(() => _tab = i),
+        isAdmin: true,
+        onTap: (i) {
+          setState(() => _tab = i);
+          // Navigation handling can go here
+        },
       ),
     );
   }
