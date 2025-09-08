@@ -1,0 +1,59 @@
+### Flutter / Dart / Android / iOS standard ignores
+# Misc
+*.log
+*.lock
+pubspec.lock
+.DS_Store
+.dart_tool/
+.packages
+build/
+/coverage/
+flutter_export_environment.sh
+
+# IntelliJ / VSCode
+.idea/
+*.iml
+.vscode/
+
+# Android
+local.properties
+**/gradle-wrapper.jar
+**/GeneratedPluginRegistrant.java
+
+# iOS / Xcode
+**/DerivedData/
+**/Pods/
+**/.symlinks/
+**/Flutter/ephemeral/
+**/Flutter/App.framework
+**/Flutter/Flutter.framework
+**/Flutter/Generated.xcconfig
+**/Runner/GeneratedPluginRegistrant.*
+
+# Web
+lib/generated_plugin_registrant.dart
+
+# Linux / MacOS / Windows build artifacts
+linux/flutter/
+macos/Flutter/
+windows/flutter/
+
+# Coverage
+coverage/
+
+# Others
+*.swp
+*.bak
+*.tmp
+*.orig
+*.rej
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+
+# Firebase / Secrets (add manually if used)
+google-services.json
+GoogleService-Info.plist
+.env
