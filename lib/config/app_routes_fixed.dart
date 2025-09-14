@@ -22,6 +22,11 @@ import 'package:valhalla_android/modules/payments/screens/payment_history_page.d
 import 'package:valhalla_android/modules/reservations/screens/reservations_home_page.dart';
 import 'package:valhalla_android/modules/reservations/screens/reservation_form_page.dart';
 
+//Package modulee
+import 'package:valhalla_android/modules/package/screens/package_home_page.dart';
+import 'package:valhalla_android/modules/package/screens/package_register_page.dart';
+import 'package:valhalla_android/modules/package/screens/package_view_package.dart';
+
 class AppRoutes {
   // Route names
   static const String login = '/';
@@ -32,8 +37,10 @@ class AppRoutes {
   static const String detailAdmin = '/detail-admin';
   static const String detailOwner = '/detail-owner';
   static const String changePassword = '/change-password';
-  static const String changePasswordProfileAdmin = '/change-password-profile-admin';
-  static const String changePasswordProfileOwner = '/change-password-profile-owner';
+  static const String changePasswordProfileAdmin =
+      '/change-password-profile-admin';
+  static const String changePasswordProfileOwner =
+      '/change-password-profile-owner';
   static const String recoverPassword = '/recover-password';
   // Payments
   static const String paymentsHome = '/payments-home';
@@ -43,6 +50,10 @@ class AppRoutes {
   // Reservations
   static const String reservationsHome = '/reservations-home';
   static const String reservationForm = '/reservation-form';
+  //Package
+  static const String packageHome = '/package-home';
+  static const String packageRegister = '/package-register';
+  static const String packageView = '/package-view';
 
   // Route generator
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -134,13 +145,25 @@ class AppRoutes {
           builder: (_) => const ReservationFormPage(),
           settings: settings,
         );
+      case packageHome:
+        return MaterialPageRoute(
+          builder: (_) => const PackagesHomePage(),
+          settings: settings,
+        );
+      case packageRegister:
+        return MaterialPageRoute(
+          builder: (_) => const RegisterPackagePage(),
+          settings: settings,
+        );
+      case packageView:
+        return MaterialPageRoute(
+          builder: (_) => const ViewPackagesPage(),
+          settings: settings,
+        );
       default:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(
-              child: Text('Page not found'),
-            ),
-          ),
+          builder: (_) =>
+              const Scaffold(body: Center(child: Text('Page not found'))),
         );
     }
   }
