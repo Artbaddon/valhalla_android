@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-/// A global navigation service to allow navigation without direct BuildContext.
-/// Usage: NavigationService.instance.push(AppRoutes.homeAdmin);
+/// Deprecated: Prefer using GoRouter's context.go()/context.push().
+/// This service remains only for legacy calls; new code should inject BuildContext.
 class NavigationService {
   NavigationService._internal();
   static final NavigationService instance = NavigationService._internal();
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  Future<T?> push<T extends Object?>(String routeName, {Object? arguments}) {
-    return navigatorKey.currentState!.pushNamed<T>(routeName, arguments: arguments);
+  // Legacy wrappers now internally use GoRouter when context is available.
+  Future<void> go(BuildContext context, String location) async {
+    context.go(location);
   }
 
-  Future<T?> replaceWith<T extends Object?, TO extends Object?>(String routeName, {Object? arguments, TO? result}) {
-    return navigatorKey.currentState!.pushReplacementNamed<T, TO>(routeName, arguments: arguments, result: result);
+  Future<void> push(BuildContext context, String location) async {
+    context.push(location);
   }
 
-  Future<T?> pushAndRemoveUntil<T extends Object?>(String routeName, {Object? arguments}) {
-    return navigatorKey.currentState!.pushNamedAndRemoveUntil<T>(routeName, (route) => false, arguments: arguments);
-  }
-
-  void pop<T extends Object?>([T? result]) {
-    if (navigatorKey.currentState!.canPop()) {
-      navigatorKey.currentState!.pop(result);
+  void pop<T extends Object?>(BuildContext context, [T? result]) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(result);
     }
   }
 }

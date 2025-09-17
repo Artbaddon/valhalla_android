@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:valhalla_android/utils/colors.dart';
 import 'package:valhalla_android/utils/routes.dart';
+import 'package:go_router/go_router.dart';
 
 // Screen showing list of payment methods (left screenshot)
 class PaymentMethodsPage extends StatelessWidget {
@@ -27,7 +28,7 @@ class PaymentMethodsPage extends StatelessWidget {
           itemBuilder: (context, index) {
             final m = methods[index];
             return GestureDetector(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.paymentMethodForm),
+              onTap: () => context.push(AppRoutes.paymentMethodForm),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,

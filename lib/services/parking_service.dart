@@ -1,0 +1,17 @@
+import 'package:dio/dio.dart';
+import 'package:valhalla_android/models/parking/parking_model.dart';
+import 'package:valhalla_android/services/api_service.dart';
+
+class ParkingService {
+  final Dio _dio = ApiService().dio;
+
+  Future<List<Parking>> fetchAll() async {
+    final res = await _dio.get('/parking'); 
+    final data = res.data is List ? res.data : (res.data['data'] as List);
+    return data.map<Parking>((e) => Parking.fromJson(e as Map<String, dynamic>)).toList();
+  }
+  Future<Parking> fetchById(int id) async {
+    final res = await _dio.get('/parking/$id'); 
+    return Parking.fromJson(res.data);
+  }
+}

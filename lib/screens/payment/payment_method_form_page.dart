@@ -30,7 +30,7 @@ class PaymentMethodFormPage extends StatelessWidget {
               children: [
                 Switch(
                   value: true,
-                  activeColor: AppColors.purple,
+                  activeThumbColor: AppColors.purple,
                   onChanged: (_) {},
                 ),
                 const SizedBox(width: 4),

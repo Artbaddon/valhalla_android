@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:valhalla_android/utils/colors.dart';
+import 'package:valhalla_android/models/payment/payment_model.dart';
+import 'package:valhalla_android/services/payment_service.dart';
 
 // Payment history table (right screenshot)
 class PaymentHistoryPage extends StatelessWidget {
@@ -8,10 +10,7 @@ class PaymentHistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = List.generate(8, (i) => {
-          'name': 'Sample User ${i + 1}',
-          'position': i % 2 == 0 ? 'Software Engineer' : 'Product Designer',
-        });
+    final future = PaymentService().fetchAll();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -24,31 +23,46 @@ class PaymentHistoryPage extends StatelessWidget {
             const Text('Historial', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.purple)),
             const SizedBox(height: 16),
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: DataTable(
-                    headingRowHeight: 42,
-                    columns: const [
-                      DataColumn(label: Text('Name')),
-                      DataColumn(label: Text('Position')),
-                      DataColumn(label: Icon(CupertinoIcons.eye)),
-                    ],
-                    rows: rows
-                        .map(
-                          (r) => DataRow(cells: [
-                            DataCell(Text(r['name']!)),
-                            DataCell(Text(r['position']!)),
+              child: FutureBuilder<List<Payment>>(
+                future: future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  final items = snapshot.data ?? const <Payment>[];
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: DataTable(
+                        headingRowHeight: 42,
+                        columns: const [
+                          DataColumn(label: Text('Referencia')),
+                          DataColumn(label: Text('Estado')),
+                          DataColumn(label: Text('Fecha')),
+                          DataColumn(label: Text('Total')),
+                          DataColumn(label: Icon(CupertinoIcons.eye)),
+                        ],
+                        rows: items.map((p) {
+                          final date = p.date?.toLocal().toString().split('.').first ?? '—';
+                          return DataRow(cells: [
+                            DataCell(Text(p.referenceNumber)),
+                            DataCell(Text(p.statusName)),
+                            DataCell(Text(date)),
+                            DataCell(Text('\$${p.totalPayment}')),
                             const DataCell(Icon(CupertinoIcons.eye, size: 18)),
-                          ]),
-                        )
-                        .toList(),
-                  ),
-                ),
+                          ]);
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],

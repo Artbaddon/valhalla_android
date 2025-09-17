@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:provider/provider.dart';
-import 'package:valhalla_android/utils/routes.dart';
+import 'package:valhalla_android/screens/admin/admin_packages.dart';
+import 'package:valhalla_android/screens/admin/admin_parking.dart';
+import 'package:valhalla_android/screens/payment/payments_home_page.dart';
+import 'package:valhalla_android/screens/reservation/reservations_home_page.dart';
 import 'package:valhalla_android/utils/colors.dart';
 import 'package:valhalla_android/widgets/navigation/app_bottom_nav.dart';
 import 'package:valhalla_android/widgets/navigation/top_navbar.dart';
-import 'package:valhalla_android/providers/auth_provider.dart';
-import 'package:valhalla_android/services/navigation_service.dart';
+import 'package:valhalla_android/screens/admin/admin_dashboard_page.dart';
+import 'package:valhalla_android/screens/admin/admin_profile_section.dart';
+import 'package:valhalla_android/screens/admin/admin_visitors.dart';
+
 
 class HomeAdminPage extends StatefulWidget {
   const HomeAdminPage({super.key});
@@ -17,204 +20,50 @@ class HomeAdminPage extends StatefulWidget {
 
 class _HomeAdminPageState extends State<HomeAdminPage> {
   int _currentIndex = 0;
+  final GlobalKey _reservationsKey = GlobalKey();
 
-  Widget _buildProfileContent() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            const CircleAvatar(
-              radius: 60,
-              backgroundColor: AppColors.purple,
-              child: Icon(CupertinoIcons.person, size: 60, color: AppColors.background),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "UserName",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.purple,
-              ),
-            ),
-            const SizedBox(height: 100),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  NavigationService.instance.push(AppRoutes.changePasswordProfileAdmin);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.purple.withOpacity(.9),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                child: const Text(
-                  "Cambiar contraseña",
-                  style: TextStyle(fontSize: 16, color: AppColors.background),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            Consumer<AuthProvider>(
-              builder: (_, auth, __) => SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    await auth.logout();
-                    NavigationService.instance.pushAndRemoveUntil(AppRoutes.login);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.purple.withOpacity(.9),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  child: const Text(
-                    "Cerrar Sesión",
-                    style: TextStyle(fontSize: 16, color: AppColors.background),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+  // Keep the order in sync with AppBottomNav(isAdmin: true)
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const AdminDashboardPage(),
+      const ParkingAdminScreen(),
+      ReservationsHomePage(key: _reservationsKey),
+      const PaymentsHomePage(),
+      const AdminVisitorsPage(),
+      const PackagesAdminScreen(),
+      const Padding(
+        padding: EdgeInsets.all(24),
+        child: AdminProfileSection(displayName: 'UserName'),
       ),
-    );
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  backgroundColor: AppColors.background,
+      backgroundColor: AppColors.background,
       appBar: TopNavbar(),
-      
-    // BODY (only first tab content implemented visually as original)
-  body: _currentIndex == 0
-      ? Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            // Card 1
-            _buildInfoCard(
-              context,
-              title: "Nuevas Amenidades",
-              description:
-                  "Lorem Ipsum is simply dummy text of the printing and typesetting industry. "
-                  "Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, "
-                  "when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-              image: "asstes/img/megafono.png", 
-            ),
-            const SizedBox(height: 16),
-
-            // Card 2
-            _buildInfoCard(
-              context,
-              title: "Mantenimiento Programado",
-              description:
-                  "Lorem Ipsum is simply dummy text of the printing and typesetting industry. "
-                  "Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, "
-                  "when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-              image: "asstes/img/herramienta.png", // herramientas
-            ),
-          ],
-        ),
-    )
-      : _currentIndex == 1
-          ? _buildPlaceholderSection() // Placeholder for second tab
-          : _buildProfileContent(), // Profile content for third tab
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,
         isAdmin: true,
-        onTap: (index) => setState(() => _currentIndex = index),
-      ),
-    );
-  }
-
-  Widget _buildInfoCard(
-    BuildContext context, {
-    required String title,
-    required String description,
-    required String image,
-  }) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  color: AppColors.lila,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Image.network(image, height: 40, width: 40),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.blue,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              description,
-              style: const TextStyle(fontSize: 14, color: AppColors.purple),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.detailAdmin);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.purple,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                child: const Text(
-                  "Leer más",
-                  style: TextStyle(color: AppColors.background),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildPlaceholderSection() {
-    // Simple placeholder maintaining design style for unimplemented tabs
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(CupertinoIcons.square_grid_2x2, size: 48, color: AppColors.purple),
-          SizedBox(height: 16),
-          Text(
-            'Sección próximamente',
-            style: TextStyle(fontSize: 18, color: AppColors.purple, fontWeight: FontWeight.w600),
-          ),
-        ],
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 2) {
+            // Trigger refresh on Reservations tab
+            final state = _reservationsKey.currentState as dynamic;
+            try {
+              state?.refresh();
+            } catch (_) {
+              // ignore if method not available
+            }
+          }
+        },
       ),
     );
   }
 }
-
-
-

@@ -15,56 +15,73 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
-## Navigation Architecture
+## Navigation & Refactor Architecture (GoRouter)
 
-The project uses a lightweight MVVM-inspired structure with a centralized navigation system:
+The app uses `go_router` for declarative, nested, and guarded navigation (auth + role based). The recent refactor modernized routing and modularized UI without changing the original top-level directory structure.
 
-Key elements:
+### Core Pieces
+1. `AppRoutes` (`lib/utils/routes.dart`)
+   * Path constants only + `homeForRole()` helper.
+   * `publicRoutes` list drives the login redirect logic.
+2. `AppRouter` (`lib/utils/app_router.dart`)
+   * Central `GoRouter` with nested groups (admin, owner, payments, reservations).
+   * `redirect` handles:
+     - Unauthenticated -> `/` (login) unless already public.
+     - Authenticated visiting `/` -> role home (`/home-admin` or `/home-owner`).
+     - Admin-only guard for admin-specific paths.
+3. `AuthProvider` integration
+   * Provided as a `refreshListenable` so route conditions re-evaluate automatically.
+4. Role-based home
+   * Centralized in `AppRoutes.homeForRole(roleName)` for consistent post-login routing.
 
-1. `NavigationService` (`lib/services/navigation_service.dart`)
-	- Holds a global `navigatorKey` for navigation without a `BuildContext` inside providers or services.
-	- Helper methods: `push`, `replaceWith`, `pushAndRemoveUntil`, `pop`.
+### Removed Legacy Artifacts
+`NavigationService` and `AuthGate` have been removed after full migration to `go_router`. Always use:
+* `context.go(path)` – Replace current location (e.g. after login/logout).
+* `context.push(path)` – Push a new screen onto the stack.
 
-2. Route definitions (`lib/utils/routes.dart`)
-	- Split into public and protected route maps for clarity.
-	- `AppRoutes.homeForRole(roleName)` returns the correct home route after login.
-	- A single `generateRoute` function builds all pages and wraps protected ones in `AuthGate`.
-
-3. `AuthGate` (`lib/widgets/navigation/auth_gate.dart`)
-	- Ensures user is authenticated before showing protected content.
-	- Redirects to `AppRoutes.login` if session is missing/expired.
-
-4. `AuthProvider` (`lib/providers/auth_provider.dart`)
-	- Manages login state; after successful login the UI navigates via `NavigationService` to role-based home.
-
-5. `main.dart`
-	- Registers `navigatorKey` and attaches `AppRoutes.generateRoute`.
-	- Uses `initialRoute: AppRoutes.login`; the provider + gate handle post-auth routing.
-
-### Adding a New Protected Screen
-1. Create the screen in `lib/screens/<area>/<your_screen>.dart`.
-2. Add a route constant in `AppRoutes`.
-3. Add an entry in the `_protected` map: `routeName: (_) => const YourScreen(),`.
-4. Navigate using: `NavigationService.instance.push(AppRoutes.yourRoute);`.
-
-### Adding a Public Screen
-1. Create the screen.
-2. Add constant + entry to `_public` map.
-3. Navigate the same way via `NavigationService` or a `Navigator` context.
-
-### Role-Based Home Dispatch
-Handled by calling:
+### Common Navigation Examples
 ```dart
-final target = AppRoutes.homeForRole(user.roleName);
-NavigationService.instance.pushAndRemoveUntil(target);
+// After successful login
+context.go(AppRoutes.homeForRole(auth.user!.roleName));
+
+// Drill-in (preserve back stack)
+context.push(AppRoutes.paymentHistory);
+
+// Admin change password (nested route)
+context.push(AppRoutes.changePasswordProfileAdmin);
 ```
 
-### Why Not GoRouter / Router 2.0 Yet?
-The current scale is modest; manual routing keeps dependencies minimal. Migration to `go_router` is straightforward later if deep linking or nested navigation complexity increases.
+### Adding a New Screen
+1. Add a constant in `AppRoutes`.
+2. If publicly reachable when logged out, add it to `publicRoutes`.
+3. Register a `GoRoute` in `app_router.dart` under the appropriate parent.
+4. Navigate with `context.push()` / `context.go()`.
 
-### Guard Behavior
-- While auth status is `loading`, a spinner shows.
-- If unauthenticated when visiting a protected route, user is redirected to login and the previous stack is cleared.
+### Shared UI Components
+Located in `lib/widgets/common/`:
+* `primary_button.dart` – Standard primary buttons (loading-aware).
+* `profile_header.dart` – Large avatar + display name block.
+* `coming_soon_section.dart` – Placeholder for unimplemented tabs.
+
+Auth, owner, and admin profile sections now consume these shared primitives for consistency.
+
+### Refactor Summary
+Completed:
+* Migrated to `go_router` with centralized auth/role redirects.
+* Deleted legacy navigation wrappers.
+* Componentized admin & owner dashboards and profile sections.
+* Modularized auth login view (`LoginForm` + color constants).
+* Extracted reusable UI primitives.
+* Standardized navigation API usage across all screens.
+
+Potential Future Enhancements:
+* Introduce `StatefulShellRoute` to retain state across bottom nav tab switches.
+* Add integration tests for guarded routes and deep linking.
+* Consolidate spacing/typography into a design tokens file.
+* Extract additional domain widgets (payments/reservations rows) for clarity.
+
+### Deep Linking & Web
+`go_router` supports deep linking automatically. Keep paths stable and human-readable.
 
 ---
-This structure keeps navigation explicit, testable, and easy to evolve as features grow.
+This architecture reduces boilerplate, improves testability, and creates a clear path for incremental feature growth.

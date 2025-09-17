@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:valhalla_android/utils/theme.dart';
-import 'package:valhalla_android/utils/routes.dart';
+import 'package:valhalla_android/utils/app_router.dart';
 import 'package:valhalla_android/services/api_service.dart';
 import 'package:valhalla_android/services/storage_service.dart';
-import 'package:valhalla_android/services/navigation_service.dart';
 import 'providers/auth_provider.dart';
 
 void main() async {
@@ -16,22 +15,32 @@ void main() async {
   runApp(const ValhallaApp());
 }
 
-class ValhallaApp extends StatelessWidget {
+class ValhallaApp extends StatefulWidget {
   const ValhallaApp({super.key});
 
+  @override
+  State<ValhallaApp> createState() => _ValhallaAppState();
+}
+
+class _ValhallaAppState extends State<ValhallaApp> {
+  // We rebuild router when auth provider changes via GoRouter refreshListenable logic
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AuthProvider()..initializeAuth(),
-      child: MaterialApp(
-        navigatorKey: NavigationService.instance.navigatorKey,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.light,
-        title: 'Valhalla',
-        onGenerateRoute: AppRoutes.generateRoute,
-        initialRoute: AppRoutes.login,
-      ),
+      builder: (ctx, _) {
+        final router = AppRouter.createRouter(ctx);
+
+        return MaterialApp.router(
+          routerConfig: router,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.light,
+          title: 'Valhalla',
+
+        );
+        
+      },
     );
   }
 }

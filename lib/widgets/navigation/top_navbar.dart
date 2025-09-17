@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
 import 'package:valhalla_android/utils/routes.dart';
 import 'package:valhalla_android/utils/colors.dart';
+import 'package:go_router/go_router.dart';
 
 class TopNavbar extends StatelessWidget implements PreferredSizeWidget {
   const TopNavbar({super.key});
@@ -51,10 +52,10 @@ class TopNavbar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.of(context).pop();
-                      Navigator.pushReplacementNamed(context, AppRoutes.login);
-                      context.read<AuthProvider>().logout();
+                      await context.read<AuthProvider>().logout();
+                      if (context.mounted) context.go(AppRoutes.login);
                     },
                     child: const Text(
                       'Cerrar Sesión',
