@@ -8,12 +8,10 @@ class StorageService {
   static const _secureStorage = FlutterSecureStorage();
   static SharedPreferences? _prefs;
 
-  // Initialize storage
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  // JWT Token methods (super secure)
   static Future<void> saveToken(String token) async {
     await _secureStorage.write(key: 'jwt_token', value: token);
   }

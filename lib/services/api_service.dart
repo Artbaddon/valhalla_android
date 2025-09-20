@@ -21,12 +21,12 @@ class ApiService {
       },
     ));
 
-    // Add interceptors
+
     _dio.interceptors.add(_createAuthInterceptor());
     _dio.interceptors.add(_createLoggingInterceptor());
   }
 
-  // Automatically adds JWT token to every request
+
   Interceptor _createAuthInterceptor() {
     return InterceptorsWrapper(
       onRequest: (options, handler) async {

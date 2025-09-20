@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+  import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
@@ -173,6 +173,7 @@ class AppRouter {
       ],
       errorBuilder: (ctx, state) => const Scaffold(
         body: Center(child: Text('Page not found')),
+        
       ),
     );
   }

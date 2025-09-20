@@ -37,6 +37,7 @@ class _ValhallaAppState extends State<ValhallaApp> {
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.light,
           title: 'Valhalla',
+         
 
         );
         

@@ -1,4 +1,3 @@
-// lib/providers/auth_provider.dart
 import 'package:flutter/foundation.dart';
 import '../models/auth/user_model.dart';
 import '../services/auth_service.dart';
