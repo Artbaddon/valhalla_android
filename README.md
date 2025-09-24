@@ -2,6 +2,14 @@
 
 A new Flutter project.
 
+## Architecture Guide
+
+For a detailed explanation of how this app is structured (MVVM, navigation, auth, CRUD), see:
+
+- docs/ARCHITECTURE.md
+
+This document covers how to extend the app with new modules following the same patterns.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

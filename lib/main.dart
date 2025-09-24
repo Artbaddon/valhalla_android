@@ -1,47 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:valhalla_android/utils/theme.dart';
-import 'package:valhalla_android/utils/app_router.dart';
-import 'package:valhalla_android/services/api_service.dart';
-import 'package:valhalla_android/services/storage_service.dart';
-import 'providers/auth_provider.dart';
+import 'core/services/storage_service.dart';
+import 'core/network/dio_client.dart';
+import 'core/services/navigation_service.dart';
+import 'core/constants/app_theme.dart';
+import 'core/di/dependency_injection.dart';
+import 'navigation/app_router.dart';
+import 'navigation/route_names.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await StorageService.init();
-  ApiService().initialize();
+  // Initialize core services
+  await StorageService.instance.init();
+  await DioClient.instance.init();
 
-  runApp(const ValhallaApp());
+  runApp(const MyApp());
 }
 
-class ValhallaApp extends StatefulWidget {
-  const ValhallaApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-  @override
-  State<ValhallaApp> createState() => _ValhallaAppState();
-}
-
-class _ValhallaAppState extends State<ValhallaApp> {
-  // We rebuild router when auth provider changes via GoRouter refreshListenable logic
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider()..initializeAuth(),
-      builder: (ctx, _) {
-        final router = AppRouter.createRouter(ctx);
-
-        return MaterialApp.router(
-          routerConfig: router,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.light,
-          title: 'Valhalla',
-         
-
-        );
-        
-      },
+    return DependencyInjection.setupProviders(
+      child: MaterialApp(
+        title: 'Valhalla Android',
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
+        navigatorKey: NavigationService.navigatorKey,
+        initialRoute: RouteNames.splash,
+        onGenerateRoute: AppRouter.generateRoute,
+      ),
     );
   }
 }
