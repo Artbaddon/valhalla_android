@@ -1,5 +1,9 @@
-// lib/services/api_service.dart
+import 'dart:async';
+
 import 'package:dio/dio.dart';
+
+import 'package:valhalla_android/utils/routes.dart';
+import 'navigation_service.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -11,21 +15,22 @@ class ApiService {
   Dio get dio => _dio;
 
   void initialize() {
-    _dio = Dio(BaseOptions(
-      baseUrl: 'http://localhost:3000/api', // Change this to your actual API URL
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ));
-
+    _dio = Dio(
+      BaseOptions(
+        baseUrl:
+            'http://localhost:3000/api', // Change this to your actual API URL
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
     _dio.interceptors.add(_createAuthInterceptor());
     _dio.interceptors.add(_createLoggingInterceptor());
   }
-
 
   Interceptor _createAuthInterceptor() {
     return InterceptorsWrapper(
@@ -40,7 +45,9 @@ class ApiService {
         // If token expired (401), clear storage
         if (error.response?.statusCode == 401) {
           await StorageService.clearAll();
-          // Redirect to login (you'll implement this)
+
+          // Navigate to login page
+          unawaited(NavigationService.instance.goTo(AppRoutes.login));
         }
         handler.next(error);
       },

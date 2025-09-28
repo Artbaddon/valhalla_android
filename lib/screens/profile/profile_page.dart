@@ -19,7 +19,7 @@ class AdminProfileSection extends StatelessWidget {
         const SizedBox(height: 100),
         PrimaryButton(
           label: 'Cambiar contraseña',
-          onPressed: () => context.push(AppRoutes.changePasswordProfileAdmin),
+          onPressed: () => context.push(AppRoutes.changePassword),
         ),
         const SizedBox(height: 30),
         Consumer<AuthProvider>(

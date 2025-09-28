@@ -32,15 +32,14 @@ class _ValhallaAppState extends State<ValhallaApp> {
         final router = AppRouter.createRouter(ctx);
 
         return MaterialApp.router(
+          debugShowCheckedModeBanner: false,
           routerConfig: router,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.light,
           title: 'Valhalla',
-         
 
-        );
-        
+        );      
       },
     );
   }

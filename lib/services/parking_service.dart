@@ -14,4 +14,16 @@ class ParkingService {
     final res = await _dio.get('/parking/$id'); 
     return Parking.fromJson(res.data);
   }
+  Future<Parking> create(Map<String, dynamic> payload) async {
+    final res = await _dio.post('/parking', data: payload); 
+    return Parking.fromJson(res.data);
+  }
+  Future<Parking> update(int id, Map<String, dynamic> payload) async {
+    final res = await _dio.put('/parking/$id', data: payload); 
+    return Parking.fromJson(res.data);
+  }
+  Future<void> delete(int id) async {
+    await _dio.delete('/parking/$id'); 
+  }
+
 }

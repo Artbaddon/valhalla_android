@@ -29,7 +29,7 @@ class AdminProfileSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => context.push(AppRoutes.changePasswordProfileAdmin),
+            onPressed: () => context.push(AppRoutes.changePassword),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.purple.withOpacity(.9),
               padding: const EdgeInsets.symmetric(vertical: 14),

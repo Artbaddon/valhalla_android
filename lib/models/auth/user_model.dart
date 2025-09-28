@@ -3,7 +3,7 @@ class User {
   final String username;
   final int statusId;
   final int roleId;
-  final String email;
+  final String? email;
   final String roleName;
 
   User({
@@ -11,18 +11,18 @@ class User {
     required this.username,
     required this.statusId,
     required this.roleId,
-    required this.email,
+    this.email,
     required this.roleName,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      username: json['username'],
-      statusId: json['status_id'],
-      roleId: json['role_id'],
-      email: json['email'],
-      roleName: json['Role_name'],
+      id: json['id'] as int,
+      username: json['username'] as String,
+      statusId: json['status_id'] as int,
+      roleId: json['role_id'] as int,
+      email: json['email'] as String?,
+      roleName: (json['Role_name'] ?? json['role_name']) as String,
     );
   }
 

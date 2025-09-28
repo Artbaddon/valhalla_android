@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/auth/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import 'package:valhalla_android/utils/navigation_config.dart';
 
 enum AuthStatus { loading, authenticated, unauthenticated }
 
@@ -18,6 +19,20 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _status == AuthStatus.authenticated;
 
+  UserRole? get role {
+    final name = user?.roleName.toLowerCase();
+    switch (name) {
+      case 'admin':
+        return UserRole.admin;
+      case 'security':
+        return UserRole.security;
+      case 'owner':
+        return UserRole.owner;
+      default:
+        return null;
+    }
+  }
+
   // Initialize auth state when app starts
   Future<void> initializeAuth() async {
     final isLoggedIn = await _authService.isLoggedIn();
@@ -31,12 +46,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Login method
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String username, String password) async {
     _status = AuthStatus.loading;
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _authService.login(email, password);
+    final result = await _authService.login(username, password);
     
     if (result['success']) {
       _user = await StorageService.getUser();
@@ -53,7 +68,6 @@ class AuthProvider extends ChangeNotifier {
 
   // Logout method
   Future<void> logout() async {
-    await _authService.logout();
     _user = null;
     _status = AuthStatus.unauthenticated;
     _errorMessage = null;

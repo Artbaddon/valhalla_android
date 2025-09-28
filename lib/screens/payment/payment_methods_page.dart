@@ -4,7 +4,6 @@ import 'package:valhalla_android/utils/colors.dart';
 import 'package:valhalla_android/utils/routes.dart';
 import 'package:go_router/go_router.dart';
 
-// Screen showing list of payment methods (left screenshot)
 class PaymentMethodsPage extends StatelessWidget {
   const PaymentMethodsPage({super.key});
 

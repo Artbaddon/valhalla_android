@@ -9,6 +9,21 @@ class NavigationService {
 
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  Future<void> goTo(String location) async {
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      GoRouter.of(context).go(location);
+      return;
+    }
+
+    final state = navigatorKey.currentState;
+    if (state != null) {
+      state.pushNamedAndRemoveUntil(location, (route) => false);
+    } else {
+      debugPrint('NavigationService: navigatorKey is not attached; unable to navigate to $location');
+    }
+  }
+
   // Legacy wrappers now internally use GoRouter when context is available.
   Future<void> go(BuildContext context, String location) async {
     context.go(location);

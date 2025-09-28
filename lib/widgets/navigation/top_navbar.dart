@@ -2,42 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
-import 'package:valhalla_android/utils/routes.dart';
 import 'package:valhalla_android/utils/colors.dart';
+import 'package:valhalla_android/utils/navigation_config.dart';
+import 'package:valhalla_android/utils/routes.dart';
 import 'package:go_router/go_router.dart';
 
 class TopNavbar extends StatelessWidget implements PreferredSizeWidget {
-  const TopNavbar({super.key});
+  const TopNavbar({super.key, this.role});
+
+  final UserRole? role;
 
   @override
   Widget build(BuildContext context) {
+
+    final showNotifications = role == null || role == UserRole.admin;
+
     return AppBar(
       elevation: 0,
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       centerTitle: true,
-      title: const Text(
-        "Valhalla",
-        style: TextStyle(
-          fontSize: 26,
+      title: Text(
+       'Valhalla' ,
+        style: const TextStyle(
+          fontSize: 32,
           fontWeight: FontWeight.bold,
           color: AppColors.purple,
         ),
       ),
       actions: [
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            CupertinoIcons.bell,
-            color: AppColors.purple,
-            size: 28,
+        if (showNotifications)
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              CupertinoIcons.bell,
+              color: AppColors.purple,
+              size: 32,
+            ),
           ),
-        ),
         IconButton(
           onPressed: () {
+            final rootContext = context;
             //Confirm logout and navigate to login
             showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
+              context: rootContext,
+              builder: (dialogContext) => AlertDialog(
                 title: const Text('Cerrar Sesión'),
                 content: const Text(
                   '¿Estás seguro de que deseas cerrar sesión?',
@@ -45,7 +53,7 @@ class TopNavbar extends StatelessWidget implements PreferredSizeWidget {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => Navigator.of(dialogContext).pop(),
                     child: const Text(
                       'Cancelar',
                       style: TextStyle(color: AppColors.purple),
@@ -53,9 +61,9 @@ class TopNavbar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                   TextButton(
                     onPressed: () async {
-                      Navigator.of(context).pop();
-                      await context.read<AuthProvider>().logout();
-                      if (context.mounted) context.go(AppRoutes.login);
+                      Navigator.of(dialogContext).pop();
+                      await rootContext.read<AuthProvider>().logout();
+                      if (rootContext.mounted) rootContext.go(AppRoutes.login);
                     },
                     child: const Text(
                       'Cerrar Sesión',

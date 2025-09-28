@@ -50,4 +50,10 @@ class Parking {
       'Vehicle_type_name': vehicleType,
     };
   }
+
+  Map<String, dynamic> toApiPayload() => {
+    'number': number,
+    'type_id': parkingType.toString(),
+    'status_id': status.toString(),
+  };
 }

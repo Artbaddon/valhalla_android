@@ -15,14 +15,14 @@ class AdminDashboardPage extends StatelessWidget {
           title: 'Nuevas Amenidades',
           description: 'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s.',
           imageUrl: 'asstes/img/megafono.png',
-          onTap: () => context.push(AppRoutes.detailAdmin),
+          onTap: () => context.push(AppRoutes.infoCard),
         ),
         const SizedBox(height: 16),
         AdminInfoCard(
           title: 'Mantenimiento Programado',
           description: 'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s.',
           imageUrl: 'asstes/img/herramienta.png',
-          onTap: () => context.push(AppRoutes.detailAdmin),
+          onTap: () => context.push(AppRoutes.infoCard),
         ),
       ],
     );
