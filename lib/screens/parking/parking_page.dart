@@ -297,240 +297,239 @@ class _ParkingScreenState extends State<ParkingScreen> {
     );
   }
 
-  Future<void> _showParkingForm(String mode, {Parking? parking}) {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogCtx) {
-        final isEdit = mode == 'edit';
-        final isView = mode == 'view';
-        final numberCtrl = TextEditingController(text: parking?.number ?? '');
-        final userCtrl = TextEditingController(
-          text: parking?.userId?.toString() ?? '',
-        );
+Future<void> _showParkingForm(String mode, {Parking? parking}) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogCtx) {
+      final isEdit = mode == 'edit';
+      final isView = mode == 'view';
+      final numberCtrl = TextEditingController(text: parking?.number ?? '');
+      final userCtrl = TextEditingController(
+        text: parking?.userId?.toString() ?? '',
+      );
 
-        const typeOptions = {'1': 'Residente', '2': 'Visitante'};
-        const vehicleOptions = {'car': 'Automóvil', 'motorcycle': 'Moto'};
-        const statusOptions = {
-          '1': 'Disponible',
-          '2': 'Ocupado',
-          '3': 'Reservado',
-        };
+      const typeOptions = {'1': 'Residente', '2': 'Visitante'};
+      const vehicleOptions = {'1': 'Automóvil', '2': 'Moto'};
+      const statusOptions = {
+        '1': 'Disponible',
+        '2': 'Ocupado',
+        '3': 'Reservado',
+      };
 
-        String? typeValue = typeOptions.entries
-            .firstWhere(
-              (e) =>
-                  e.value.toLowerCase() ==
-                  (parking?.parkingType ?? '').toLowerCase(),
-              orElse: () => const MapEntry('', ''),
-            )
-            .key;
-        if (typeValue?.isEmpty ?? true) typeValue = null;
+      // Map parking values to dropdown keys
+      String? typeValue;
+      String? vehicleValue;
+      String? statusValue;
 
-        String? vehicleValue = vehicleOptions.entries
-            .firstWhere(
-              (e) =>
-                  e.value.toLowerCase() ==
-                  (parking?.vehicleType ?? '').toLowerCase(),
-              orElse: () => const MapEntry('', ''),
-            )
-            .key;
-        if (vehicleValue?.isEmpty ?? true) vehicleValue = null;
+      if (parking != null) {
+        // Type mapping
+        final parkingTypeLower = parking.parkingType.toLowerCase();
+        if (parkingTypeLower.contains('residente') || parkingTypeLower.contains('resident')) {
+          typeValue = '1';
+        } else if (parkingTypeLower.contains('visitante') || parkingTypeLower.contains('visitor')) {
+          typeValue = '2';
+        }
 
-        String? statusValue = statusOptions.entries
-            .firstWhere(
-              (e) =>
-                  e.value.toLowerCase() ==
-                  (parking?.status ?? '').toLowerCase(),
-              orElse: () => const MapEntry('', ''),
-            )
-            .key;
-        if (statusValue?.isEmpty ?? true) statusValue = null;
+        // Vehicle mapping
+        final vehicleTypeLower = parking.vehicleType.toLowerCase();
+        if (vehicleTypeLower.contains('auto') || vehicleTypeLower.contains('car')) {
+          vehicleValue = '1';
+        } else if (vehicleTypeLower.contains('moto') || vehicleTypeLower.contains('motorcycle')) {
+          vehicleValue = '2';
+        }
 
-        return StatefulBuilder(
-          builder: (ctx, setInnerState) {
-            final formKey = GlobalKey<FormState>();
-            return AlertDialog(
-              backgroundColor: const Color(0xFFF2F3FF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    switch (mode) {
-                      'add' => 'Añadir Parqueadero',
-                      'edit' => 'Editar Parqueadero',
-                      _ => 'Detalle de Parqueadero',
-                    },
-                    style: const TextStyle(
-                      color: secondaryColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+        // Status mapping
+        final statusLower = parking.status.toLowerCase();
+        if (statusLower.contains('disponible') || statusLower.contains('available')) {
+          statusValue = '1';
+        } else if (statusLower.contains('ocupado') || statusLower.contains('occupied')) {
+          statusValue = '2';
+        } else if (statusLower.contains('reservado') || statusLower.contains('reserved')) {
+          statusValue = '3';
+        }
+      }
+
+      return StatefulBuilder(
+        builder: (ctx, setInnerState) {
+          final formKey = GlobalKey<FormState>();
+          return AlertDialog(
+            backgroundColor: const Color(0xFFF2F3FF),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  switch (mode) {
+                    'add' => 'Añadir Parqueadero',
+                    'edit' => 'Editar Parqueadero',
+                    _ => 'Detalle de Parqueadero',
+                  },
+                  style: const TextStyle(
+                    color: secondaryColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1, color: secondaryColor),
+                ),
+                const SizedBox(height: 8),
+                const Divider(height: 1, color: secondaryColor),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: numberCtrl,
+                    enabled: !isView,
+                    decoration: _fieldDecoration('Número'),
+                    validator: isView
+                        ? null
+                        : (value) => (value == null || value.trim().isEmpty)
+                              ? 'Ingrese el número'
+                              : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: typeValue,
+                    decoration: _fieldDecoration('Tipo de Parqueadero'),
+                    items: typeOptions.entries
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isView
+                        ? null
+                        : (value) => setInnerState(() => typeValue = value),
+                    validator: isView || typeOptions.isEmpty
+                        ? null
+                        : (value) =>
+                              value == null ? 'Seleccione un tipo' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: vehicleValue,
+                    decoration: _fieldDecoration('Tipo de Vehículo'),
+                    items: vehicleOptions.entries
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isView
+                        ? null
+                        : (value) =>
+                              setInnerState(() => vehicleValue = value),
+                    validator: isView
+                        ? null
+                        : (value) => value == null
+                              ? 'Seleccione el tipo de vehículo'
+                              : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: statusValue,
+                    decoration: _fieldDecoration('Estado'),
+                    items: statusOptions.entries
+                        .map(
+                          (entry) => DropdownMenuItem(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isView
+                        ? null
+                        : (value) => setInnerState(() => statusValue = value),
+                    validator: isView
+                        ? null
+                        : (value) =>
+                              value == null ? 'Seleccione el estado' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: userCtrl,
+                    enabled: !isView,
+                    decoration: _fieldDecoration('ID de Usuario (opcional)'),
+                    keyboardType: TextInputType.number,
+                    validator: isView
+                        ? null
+                        : (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return null;
+                            }
+                            return int.tryParse(value.trim()) == null
+                                ? 'Ingrese un número válido'
+                                : null;
+                          },
+                  ),
                 ],
               ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: numberCtrl,
-                      enabled: !isView,
-                      decoration: _fieldDecoration('Número'),
-                      validator: isView
-                          ? null
-                          : (value) => (value == null || value.trim().isEmpty)
-                                ? 'Ingrese el número'
-                                : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: typeValue,
-                      decoration: _fieldDecoration('Tipo de Parqueadero'),
-                      items: typeOptions.entries
-                          .map(
-                            (entry) => DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: isView
-                          ? null
-                          : (value) => setInnerState(() => typeValue = value),
-                      validator: isView || typeOptions.isEmpty
-                          ? null
-                          : (value) =>
-                                value == null ? 'Seleccione un tipo' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: vehicleValue,
-                      decoration: _fieldDecoration('Tipo de Vehículo'),
-                      items: vehicleOptions.entries
-                          .map(
-                            (entry) => DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: isView
-                          ? null
-                          : (value) =>
-                                setInnerState(() => vehicleValue = value),
-                      validator: isView
-                          ? null
-                          : (value) => value == null
-                                ? 'Seleccione el tipo de vehículo'
-                                : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: statusValue,
-                      decoration: _fieldDecoration('Estado'),
-                      items: statusOptions.entries
-                          .map(
-                            (entry) => DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: isView
-                          ? null
-                          : (value) => setInnerState(() => statusValue = value),
-                      validator: isView
-                          ? null
-                          : (value) =>
-                                value == null ? 'Seleccione el estado' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: userCtrl,
-                      enabled: !isView,
-                      decoration: _fieldDecoration('ID de Usuario (opcional)'),
-                      keyboardType: TextInputType.number,
-                      validator: isView
-                          ? null
-                          : (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return null;
-                              }
-                              return int.tryParse(value.trim()) == null
-                                  ? 'Ingrese un número válido'
-                                  : null;
-                            },
-                    ),
-                  ],
-                ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar'),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cerrar'),
-                ),
-                if (!isView)
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: secondaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
+              if (!isView)
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: secondaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
                     ),
-                    onPressed: () async {
-                      if (!(formKey.currentState?.validate() ?? false)) return;
-                      final payload = Parking(
-                        id: parking?.id ?? 0,
-                        number: numberCtrl.text.trim(),
-                        parkingType: typeOptions[typeValue] ?? '',
-                        vehicleType: vehicleOptions[vehicleValue] ?? '',
-                        status: statusOptions[statusValue] ?? '',
-                        userId: userCtrl.text.trim().isEmpty
-                            ? null
-                            : int.parse(userCtrl.text.trim()),
-                      );
-                      try {
-                        if (isEdit) {
-                          await _service.update(
-                            payload.id,
-                            payload.toApiPayload(),
-                          );
-                        } else {
-                          await _service.create(payload.toApiPayload());
-                        }
-                        if (!mounted) return;
-                        Navigator.pop(context);
-                        setState(() {
-                          _future = _service.fetchAll();
-                        });
-                      } catch (e) {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
-                    },
-                    child: Text(isEdit ? 'Guardar' : 'Añadir'),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
+                  onPressed: () async {
+                    if (!(formKey.currentState?.validate() ?? false)) return;
+                    // Create payload with proper API format (all as numbers)
+                    final apiPayload = {
+                      'number': numberCtrl.text.trim(),
+                      'type_id': int.parse(typeValue ?? '1'), // Send as number
+                      'vehicle_type_id': int.parse(vehicleValue ?? '1'), // Send as number
+                      'status_id': int.parse(statusValue ?? '1'), // Send as number
+                      if (userCtrl.text.trim().isNotEmpty) 
+                        'user_id': int.parse(userCtrl.text.trim()),
+                    };
+                    
+                    try {
+                      if (isEdit) {
+                        await _service.update(parking!.id, apiPayload);
+                      } else {
+                        await _service.create(apiPayload);
+                      }
+                      if (!mounted) return;
+                      Navigator.pop(context);
+                      setState(() {
+                        _future = _service.fetchAll();
+                      });
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  child: Text(isEdit ? 'Guardar' : 'Añadir'),
+                ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
   Widget _buildParkingSection({
     required String title,
     required List<Widget> items,

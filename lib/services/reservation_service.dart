@@ -22,4 +22,26 @@ class ReservationService {
         : Map<String, dynamic>.from(raw as Map);
     return Reservation.fromJson(map);
   }
+
+  Future<Reservation> create(Map<String, dynamic> payload) async {
+    final res = await _dio.post('/reservations', data: payload);
+    final raw = res.data;
+    final map = (raw is Map && raw['data'] is Map)
+        ? Map<String, dynamic>.from(raw['data'])
+        : Map<String, dynamic>.from(raw as Map);
+    return Reservation.fromJson(map);
+  }
+
+  Future<Reservation> update(int id, Map<String, dynamic> payload) async {
+    final res = await _dio.put('/reservations/$id', data: payload);
+    final raw = res.data;
+    final map = (raw is Map && raw['data'] is Map)
+        ? Map<String, dynamic>.from(raw['data'])
+        : Map<String, dynamic>.from(raw as Map);
+    return Reservation.fromJson(map);
+  }
+
+  Future<void> delete(int id) async {
+    await _dio.delete('/reservations/$id');
+  }
 }
