@@ -62,13 +62,11 @@ RoleNavigationConfig _buildConfig(
   List<String> extraAllowed = const [],
 }) {
   final homeRoute = AppRoutes.homeForRole(role.name);
-  final featureItems = navKeys.map((key) => _navLibrary[key]!).toList(growable: false);
+  final featureItems = navKeys
+      .map((key) => _navLibrary[key]!)
+      .toList(growable: false);
   final navItems = <NavItem>[
-    NavItem(
-      label: 'Inicio',
-      icon: CupertinoIcons.house_fill,
-      route: homeRoute,
-    ),
+    NavItem(label: 'Inicio', icon: CupertinoIcons.house_fill, route: homeRoute),
     ...featureItems,
     NavItem(
       label: 'Perfil',
@@ -106,8 +104,8 @@ final roleNavigation = {
       AppRoutes.reservationsHome,
       AppRoutes.reservationForm,
       AppRoutes.paymentsHome,
-      AppRoutes.paymentMethods,
-      AppRoutes.paymentMethodForm,
+  AppRoutes.paymentMethods,
+      AppRoutes.paymentMake,
       AppRoutes.paymentHistory,
       AppRoutes.packagesHome,
       AppRoutes.packageForm,
@@ -128,8 +126,9 @@ final roleNavigation = {
       AppRoutes.reservationsHome,
       AppRoutes.reservationForm,
       AppRoutes.paymentsHome,
-      AppRoutes.paymentMethods,
-      AppRoutes.paymentMethodForm,
+      AppRoutes.paymentCreate,
+  AppRoutes.paymentMethods,
+      AppRoutes.paymentMake,
       AppRoutes.paymentHistory,
       AppRoutes.visitorsHome,
       AppRoutes.visitorForm,
@@ -139,11 +138,7 @@ final roleNavigation = {
   ),
   UserRole.security: _buildConfig(
     UserRole.security,
-    const [
-      _NavKey.parking,
-      _NavKey.visitors,
-      _NavKey.packages,
-    ],
+    const [_NavKey.parking, _NavKey.visitors, _NavKey.packages],
     extraAllowed: const [
       AppRoutes.changePassword,
       AppRoutes.parkingHome,

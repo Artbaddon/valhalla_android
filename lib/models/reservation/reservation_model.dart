@@ -11,26 +11,26 @@ enum ReservationStatus {
 
 class Reservation {
   // IDs
-  final int id;                    // Reservation_id
-  final int? typeId;               // Reservation_type_FK_ID
-  final int? statusId;             // Reservation_status_FK_ID
-  final int? facilityId;           // Facility_FK_ID
-  final int? ownerId;              // Owner_FK_ID / Owner_id
+  final int id; // Reservation_id
+  final int? typeId; // Reservation_type_FK_ID
+  final int? statusId; // Reservation_status_FK_ID
+  final int? facilityId; // Facility_FK_ID
+  final int? ownerId; // Owner_FK_ID / Owner_id
 
   // Times
-  final DateTime? startTime;       // Reservation_start_time
-  final DateTime? endTime;         // Reservation_end_time
-  final DateTime? createdAt;       // createdAt/created_at
-  final DateTime? updatedAt;       // updatedAt/updated_at
+  final DateTime? startTime; // Reservation_start_time
+  final DateTime? endTime; // Reservation_end_time
+  final DateTime? createdAt; // createdAt/created_at
+  final DateTime? updatedAt; // updatedAt/updated_at
 
   // Text fields
-  final String description;        // Reservation_description
-  final String statusName;         // Reservation_status_name (e.g., "Pending")
-  final String typeName;           // Reservation_type_name (e.g., "Room")
-  final String ownerName;          // owner_name
+  final String description; // Reservation_description
+  final String statusName; // Reservation_status_name (e.g., "Pending")
+  final String typeName; // Reservation_type_name (e.g., "Room")
+  final String ownerName; // owner_name
 
   // Derived
-  final ReservationStatus status;  // mapped from statusName
+  final ReservationStatus status; // mapped from statusName
 
   const Reservation({
     required this.id,
@@ -70,18 +70,26 @@ class Reservation {
 
     String toStr(dynamic v) => v?.toString() ?? '';
 
-    final statusName = toStr(json['Reservation_status_name'] ?? json['status_name'] ?? json['status']);
+    final statusName = toStr(
+      json['Reservation_status_name'] ?? json['status_name'] ?? json['status'],
+    );
     final typeName = toStr(json['Reservation_type_name'] ?? json['type_name']);
 
     return Reservation(
       id: toInt(json['Reservation_id'] ?? json['id'], defaultValue: 0),
       typeId: toIntOrNull(json['Reservation_type_FK_ID'] ?? json['type_id']),
-      statusId: toIntOrNull(json['Reservation_status_FK_ID'] ?? json['status_id']),
+      statusId: toIntOrNull(
+        json['Reservation_status_FK_ID'] ?? json['status_id'],
+      ),
       startTime: toDate(json['Reservation_start_time'] ?? json['start_time']),
       endTime: toDate(json['Reservation_end_time'] ?? json['end_time']),
       facilityId: toIntOrNull(json['Facility_FK_ID'] ?? json['facility_id']),
-      description: toStr(json['Reservation_description'] ?? json['description']),
-      ownerId: toIntOrNull(json['Owner_FK_ID'] ?? json['Owner_id'] ?? json['owner_id']),
+      description: toStr(
+        json['Reservation_description'] ?? json['description'],
+      ),
+      ownerId: toIntOrNull(
+        json['Owner_FK_ID'] ?? json['Owner_id'] ?? json['owner_id'],
+      ),
       createdAt: toDate(json['createdAt'] ?? json['created_at']),
       updatedAt: toDate(json['updatedAt'] ?? json['updated_at']),
       statusName: statusName,
@@ -106,6 +114,17 @@ class Reservation {
       'Reservation_status_name': statusName,
       'Reservation_type_name': typeName,
       'owner_name': ownerName,
+    };
+  }
+
+  Map<String, dynamic> toApiPayload() {
+    return {
+      "owner_id": ownerId,
+      "type_id": typeId,
+      "facility_id": facilityId,
+      "start_date": startTime?.toIso8601String(),
+      "end_date": endTime?.toIso8601String(),
+      "description": description,
     };
   }
 

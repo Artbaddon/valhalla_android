@@ -27,7 +27,6 @@ class _ReservationsHomePageState extends State<ReservationsHomePage> {
     _futureReservations = _reservationService.fetchAll();
   }
 
-  // Public method so parent (via GlobalKey) can force a reload when entering
   Future<void> refresh() async {
     setState(() {
       _futureReservations = _reservationService.fetchAll();
@@ -41,48 +40,97 @@ class _ReservationsHomePageState extends State<ReservationsHomePage> {
     return items.where((r) => sameDay(r.startTime, day)).toList();
   }
 
+  String _two(int value) => value.toString().padLeft(2, '0');
+
   String _fmtRange(Reservation r) {
     final s = r.startTime?.toLocal();
     final e = r.endTime?.toLocal();
-    String two(int n) => n.toString().padLeft(2, '0');
     if (s == null || e == null) return '—';
-    return '${two(s.hour)}:${two(s.minute)} - ${two(e.hour)}:${two(e.minute)}';
+    return '${_two(s.hour)}:${_two(s.minute)} - ${_two(e.hour)}:${_two(e.minute)}';
+  }
+
+  String _formatDateTime(DateTime? value) {
+    if (value == null) return '—';
+    final local = value.toLocal();
+    return '${local.year}-${_two(local.month)}-${_two(local.day)} ${_two(local.hour)}:${_two(local.minute)}';
+  }
+
+  String _formatDay(DateTime value) {
+    final local = value.toLocal();
+    return '${local.year}-${_two(local.month)}-${_two(local.day)}';
+  }
+
+  String _valueOrDash(String? value) {
+    if (value == null) return '—';
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? '—' : trimmed;
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: AppColors.black, height: 1.3),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showReservationDetail(BuildContext context, int id) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Detalle de reserva'),
-        content: FutureBuilder<Reservation>(
-          future: _reservationService.fetchById(id),
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const SizedBox(
-                height: 80,
-                child: Center(child: CircularProgressIndicator()),
+        backgroundColor: AppColors.lila,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Detalle de reserva',
+          style: TextStyle(color: AppColors.black, fontWeight: FontWeight.w700),
+        ),
+        content: Theme(
+          data: Theme.of(context).copyWith(
+            textTheme: Theme.of(context)
+                .textTheme
+                .apply(bodyColor: AppColors.black),
+          ),
+          child: FutureBuilder<Reservation>(
+            future: _reservationService.fetchById(id),
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const SizedBox(
+                  height: 80,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snap.hasError) return Text('Error: ${snap.error}');
+              final r = snap.data!;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _detailRow('ID', '${r.id}'),
+                  _detailRow('Tipo', _valueOrDash(r.typeName)),
+                  _detailRow('Estado', _valueOrDash(r.statusName)),
+                  _detailRow('Inicio', _formatDateTime(r.startTime)),
+                  _detailRow('Fin', _formatDateTime(r.endTime)),
+                  _detailRow('Propietario', _valueOrDash(r.ownerName)),
+                  _detailRow('Descripción', _valueOrDash(r.description)),
+                ],
               );
-            }
-            if (snap.hasError) return Text('Error: ${snap.error}');
-            final r = snap.data!;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('ID: ${r.id}'),
-                Text('Tipo: ${r.typeName}'),
-                Text('Estado: ${r.statusName}'),
-                Text('Inicio: ${r.startTime?.toLocal()}'),
-                Text('Fin: ${r.endTime?.toLocal()}'),
-                Text('Propietario: ${r.ownerName}'),
-                Text('Descripción: ${r.description}'),
-              ],
-            );
-          },
+            },
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: AppColors.purple),
             child: const Text('Cerrar'),
           ),
         ],
@@ -113,17 +161,16 @@ class _ReservationsHomePageState extends State<ReservationsHomePage> {
             ),
             shape: BoxShape.circle,
           ),
-          child: Text('${day.day}', style: const TextStyle(fontSize: 12)),
+          child: Text('${day.day}', style: const TextStyle(fontSize: 12, color: AppColors.black),),
         );
       }
 
-      return Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        padding: const EdgeInsets.all(8),
-        child: TableCalendar(
+      return Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: TableCalendar(
           focusedDay: _focusedDay,
           firstDay: DateTime.utc(2020, 1, 1),
           lastDay: DateTime.utc(2030, 12, 31),
@@ -145,6 +192,7 @@ class _ReservationsHomePageState extends State<ReservationsHomePage> {
             todayBuilder: (context, day, focusedDay) => dayCell(day),
             outsideBuilder: (context, day, focusedDay) =>
                 Opacity(opacity: 0.5, child: dayCell(day)),
+          ),
           ),
         ),
       );
@@ -205,18 +253,21 @@ class _ReservationsHomePageState extends State<ReservationsHomePage> {
                 else
                   Column(
                     children: itemsOfDay.map((r) {
-                      final date =
-                          '${selected.day}/${selected.month}/${selected.year}';
+            final date = _formatDay(selected);
                       final title =
                           '${r.typeName.isNotEmpty ? r.typeName : 'Zona'} • ${r.ownerName.isNotEmpty ? r.ownerName : '—'}';
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: InkWell(
-                          onTap: () => _showReservationDetail(context, r.id),
-                          child: _ReservationRow(
-                            title: title,
-                            date: date,
-                            time: _fmtRange(r),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () => _showReservationDetail(context, r.id),
+                            child: _ReservationRow(
+                              title: title,
+                              date: date,
+                              time: _fmtRange(r),
+                            ),
                           ),
                         ),
                       );
@@ -234,19 +285,21 @@ class _ReservationsHomePageState extends State<ReservationsHomePage> {
                 Column(
                   children: all.map((r) {
                     final s = r.startTime?.toLocal();
-                    final date = s == null
-                        ? '—'
-                        : '${s.day}/${s.month}/${s.year}';
+          final date = s == null ? '—' : _formatDay(s);
                     final title =
                         '${r.typeName.isNotEmpty ? r.typeName : 'Zona'} • ${r.ownerName.isNotEmpty ? r.ownerName : '—'}';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: InkWell(
-                        onTap: () => _showReservationDetail(context, r.id),
-                        child: _ReservationRow(
-                          title: title,
-                          date: date,
-                          time: _fmtRange(r),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () => _showReservationDetail(context, r.id),
+                          child: _ReservationRow(
+                            title: title,
+                            date: date,
+                            time: _fmtRange(r),
+                          ),
                         ),
                       ),
                     );
@@ -306,34 +359,11 @@ class _ReservationRow extends StatelessWidget {
             child: Icon(CupertinoIcons.calendar, size: 14, color: Colors.white),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Text('$title\n$date  $time')),
-          _ChipButton(label: 'Aceptar', onTap: () {}),
-          const SizedBox(width: 6),
-          _ChipButton(label: 'Cancelar', onTap: () {}),
+          Expanded(child: Text('$title\n$date  $time', style: const TextStyle(fontSize: 12, color: Colors.black87))),
+          const Icon(CupertinoIcons.chevron_right, size: 16, color: Colors.black54),
         ],
       ),
     );
   }
 }
 
-class _ChipButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _ChipButton({required this.label, required this.onTap});
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        minimumSize: Size.zero,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        backgroundColor: AppColors.purple,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 12, color: Colors.white),
-      ),
-    );
-  }
-}

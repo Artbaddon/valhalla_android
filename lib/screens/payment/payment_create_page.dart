@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:valhalla_android/models/payment/payment_model.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
 import 'package:valhalla_android/services/payment_service.dart';
 import 'package:valhalla_android/utils/colors.dart';
@@ -11,27 +10,19 @@ import 'package:valhalla_android/utils/routes.dart';
 import 'package:valhalla_android/widgets/navigation/app_bottom_nav.dart';
 import 'package:valhalla_android/widgets/navigation/top_navbar.dart';
 
-class PaymentMakeArgs {
-  const PaymentMakeArgs({required this.payment, this.presetMethod});
-
-  final Payment payment;
-  final String? presetMethod;
-}
-
-class PaymentMakePage extends StatefulWidget {
-  const PaymentMakePage({super.key, required this.args});
-
-  final PaymentMakeArgs args;
+class PaymentCreatePage extends StatefulWidget {
+  const PaymentCreatePage({super.key});
 
   @override
-  State<PaymentMakePage> createState() => _PaymentMakePageState();
+  State<PaymentCreatePage> createState() => _PaymentCreatePageState();
 }
 
-class _PaymentMakePageState extends State<PaymentMakePage> {
-  static const List<String> _methodOptions = [
-    'CASH',
-    'CARD',
-    'TRANSFER',
+class _PaymentCreatePageState extends State<PaymentCreatePage> {
+  static const List<String> _paymentTypes = [
+    'MAINTENANCE',
+    'PARKING',
+    'RESERVATION',
+    'OTHER',
   ];
 
   static const TextStyle _labelStyle = TextStyle(
@@ -41,16 +32,21 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
   );
 
   final _formKey = GlobalKey<FormState>();
-  final _paymentDateCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  final _ownerCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
   final PaymentService _service = PaymentService();
 
-  String _selectedMethod = _methodOptions.first;
-  DateTime? _paymentDate;
+  String _selectedType = _paymentTypes.first;
   bool _submitting = false;
 
-  String _two(int value) => value.toString().padLeft(2, '0');
-
-  String _formatDate(DateTime date) => '${date.year}-${_two(date.month)}-${_two(date.day)}';
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _ownerCtrl.dispose();
+    _descriptionCtrl.dispose();
+    super.dispose();
+  }
 
   InputDecoration _inputDecoration(String hint, {Widget? suffix}) {
     return InputDecoration(
@@ -66,38 +62,6 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
     );
   }
 
-  @override
-  void dispose() {
-    _paymentDateCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    final preset = widget.args.presetMethod;
-    if (preset != null && _methodOptions.contains(preset)) {
-      _selectedMethod = preset;
-    }
-  }
-
-  Future<void> _pickDate() async {
-    FocusScope.of(context).unfocus();
-    final now = DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: _paymentDate ?? now,
-      firstDate: DateTime(now.year - 1, 1, 1),
-      lastDate: DateTime(now.year + 1, 12, 31),
-    );
-    if (selected == null) return;
-
-    setState(() {
-      _paymentDate = selected;
-      _paymentDateCtrl.text = _formatDate(selected);
-    });
-  }
-
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     final form = _formKey.currentState;
@@ -106,22 +70,43 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
       return;
     }
 
+    final normalizedAmount = _amountCtrl.text.replaceAll(',', '.');
+    final amount = double.tryParse(normalizedAmount);
+    final ownerId = int.tryParse(_ownerCtrl.text.trim());
+
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingrese un monto válido.')),
+      );
+      return;
+    }
+    if (ownerId == null || ownerId <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingrese un ID de propietario válido.')),
+      );
+      return;
+    }
+
     final payload = {
-      'method': _selectedMethod,
-      if (_paymentDate != null) 'payment_date': _formatDate(_paymentDate!),
+      'amount': amount,
+      'owner_id': ownerId,
+      'payment_type': _selectedType,
+      'description': _descriptionCtrl.text.trim().isEmpty
+          ? null
+          : _descriptionCtrl.text.trim(),
     };
 
     setState(() => _submitting = true);
     try {
-      await _service.makePayment(widget.args.payment.id, payload);
+      await _service.createPayment(payload);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pago registrado correctamente')),
+        const SnackBar(content: Text('Pago creado correctamente')),
       );
-      Navigator.of(context).pop(true);
+      await Navigator.of(context).maybePop();
     } catch (e) {
       if (!mounted) return;
-      String message = 'Error al registrar el pago';
+      String message = 'Error al crear el pago';
       if (e is DioException) {
         final data = e.response?.data;
         if (data is Map && data['error'] is String) {
@@ -159,8 +144,6 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
     );
     final currentIndex = navIndex == -1 ? 0 : navIndex;
 
-    final payment = widget.args.payment;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: TopNavbar(role: role),
@@ -185,7 +168,7 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
                     BackButton(),
                     SizedBox(width: 8),
                     Text(
-                      'Registrar pago',
+                      'Crear pago',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -208,27 +191,6 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Detalle del pago',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _DetailRow(
-                              label: 'Referencia',
-                              value: payment.referenceNumber.isNotEmpty
-                                  ? payment.referenceNumber
-                                  : '—',
-                            ),
-                            _DetailRow(
-                              label: 'Total',
-                              value: '\$${payment.totalPayment}',
-                            ),
-                            _DetailRow(label: 'Estado', value: payment.statusName),
-                            const SizedBox(height: 24),
-                            const Text(
                               'Información del pago',
                               style: TextStyle(
                                 fontSize: 16,
@@ -237,33 +199,66 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            Text('Método', style: _labelStyle),
+                            Text('Monto', style: _labelStyle),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _amountCtrl,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: _inputDecoration('Ej. 1000.00'),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Requerido';
+                                }
+                                final normalized = value.replaceAll(',', '.');
+                                final parsed = double.tryParse(normalized);
+                                if (parsed == null || parsed <= 0) {
+                                  return 'Monto inválido';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            Text('Propietario (ID)', style: _labelStyle),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _ownerCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: _inputDecoration('Ej. 1'),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Requerido';
+                                }
+                                final parsed = int.tryParse(value.trim());
+                                if (parsed == null || parsed <= 0) {
+                                  return 'ID inválido';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            Text('Tipo de pago', style: _labelStyle),
                             const SizedBox(height: 6),
                             DropdownButtonFormField<String>(
-                              value: _selectedMethod,
-                              decoration: _inputDecoration('Seleccione un método'),
-                              items: _methodOptions
-                                  .map((m) => DropdownMenuItem(
-                                        value: m,
-                                        child: Text(m),
+                              value: _selectedType,
+                              items: _paymentTypes
+                                  .map((type) => DropdownMenuItem(
+                                        value: type,
+                                        child: Text(type),
                                       ))
                                   .toList(),
                               onChanged: (value) {
                                 if (value == null) return;
-                                setState(() => _selectedMethod = value);
+                                setState(() => _selectedType = value);
                               },
+                              decoration: _inputDecoration('Seleccione un tipo'),
                             ),
                             const SizedBox(height: 16),
-                            Text('Fecha de pago', style: _labelStyle),
+                            Text('Descripción', style: _labelStyle),
                             const SizedBox(height: 6),
                             TextFormField(
-                              controller: _paymentDateCtrl,
-                              readOnly: true,
-                              decoration: _inputDecoration(
-                                'Opcional',
-                                suffix: const Icon(Icons.calendar_today, size: 18),
-                              ),
-                              onTap: _pickDate,
+                              controller: _descriptionCtrl,
+                              decoration: _inputDecoration('Opcional'),
+                              maxLines: 3,
                             ),
                           ],
                         ),
@@ -284,7 +279,7 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
                       ),
                     ),
                     child: Text(
-                      _submitting ? 'Guardando...' : 'Registrar pago',
+                      _submitting ? 'Guardando...' : 'Crear pago',
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
@@ -297,32 +292,3 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
     );
   }
 }
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: AppColors.black, height: 1.3),
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            TextSpan(text: value),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
-

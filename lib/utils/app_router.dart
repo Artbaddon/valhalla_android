@@ -13,9 +13,13 @@ import 'package:valhalla_android/screens/auth/recover_page.dart';
 import 'package:valhalla_android/screens/main/home_page.dart';
 import 'package:valhalla_android/screens/packages/packages_page.dart';
 import 'package:valhalla_android/screens/parking/parking_page.dart';
+import 'package:valhalla_android/screens/payment/payment_create_page.dart'
+    as payment_create;
 import 'package:valhalla_android/screens/payment/payment_history_page.dart';
-import 'package:valhalla_android/screens/payment/payment_method_form_page.dart';
-import 'package:valhalla_android/screens/payment/payment_methods_page.dart';
+import 'package:valhalla_android/screens/payment/payment_method_form_page.dart'
+    as payment_make;
+import 'package:valhalla_android/screens/payment/payment_methods_page.dart'
+    as payment_methods;
 import 'package:valhalla_android/screens/payment/payments_home_page.dart';
 import 'package:valhalla_android/screens/reservation/reservation_form_page.dart';
 import 'package:valhalla_android/screens/reservation/reservations_home_page.dart';
@@ -62,7 +66,17 @@ class AppRouter {
           return config.homeRoute;
         }
 
-        if (!config.allowedRoutes.contains(location) &&
+        final allowedRoutes = config.allowedRoutes.toSet();
+        if (role == UserRole.admin) {
+          allowedRoutes.add(AppRoutes.paymentCreate);
+          allowedRoutes.add(AppRoutes.paymentMethods);
+          allowedRoutes.add(AppRoutes.paymentMake);
+        } else if (role == UserRole.owner) {
+          allowedRoutes.add(AppRoutes.paymentMethods);
+          allowedRoutes.add(AppRoutes.paymentMake);
+        }
+
+        if (!allowedRoutes.contains(location) &&
             !AppRoutes.homeRoutes.contains(location)) {
           return config.homeRoute;
         }
@@ -103,12 +117,32 @@ class AppRouter {
           builder: (ctx, s) => const PaymentsHomePage(),
         ),
         GoRoute(
-          path: AppRoutes.paymentMethods,
-          builder: (ctx, s) => const PaymentMethodsPage(),
+          path: AppRoutes.paymentCreate,
+          builder: (ctx, s) => const payment_create.PaymentCreatePage(),
         ),
         GoRoute(
-          path: AppRoutes.paymentMethodForm,
-          builder: (ctx, s) => const PaymentMethodFormPage(),
+          path: AppRoutes.paymentMethods,
+          builder: (ctx, s) {
+            final extra = s.extra;
+            if (extra is! payment_methods.PaymentMethodsArgs) {
+              return const Scaffold(
+                body: Center(child: Text('Método no disponible')),
+              );
+            }
+            return payment_methods.PaymentMethodsPage(args: extra);
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.paymentMake,
+          builder: (ctx, s) {
+            final extra = s.extra;
+            if (extra is! payment_make.PaymentMakeArgs) {
+              return const Scaffold(
+                body: Center(child: Text('Pago no disponible')),
+              );
+            }
+            return payment_make.PaymentMakePage(args: extra);
+          },
         ),
         GoRoute(
           path: AppRoutes.paymentHistory,

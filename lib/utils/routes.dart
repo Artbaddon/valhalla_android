@@ -14,8 +14,9 @@ class AppRoutes {
   
   // Payments
   static const String paymentsHome = '/payments-home';
+  static const String paymentCreate = '/payment-create';
   static const String paymentMethods = '/payment-methods';
-  static const String paymentMethodForm = '/payment-method-form';
+  static const String paymentMake = '/payment-make';
   static const String paymentHistory = '/payment-history';
   // Reservations
   static const String reservationsHome = '/reservations-home';

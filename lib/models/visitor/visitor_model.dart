@@ -7,6 +7,12 @@ class Visitor {
 	final DateTime? exitDate; // exit_date
 	final int? ownerId; // Owner_id
 	final String hostName; // host_name
+	final String? status; // status
+	final String? purpose; // visit_purpose
+	final String? vehiclePlate; // vehicle_plate
+	final String? notes; // notes
+	final DateTime? createdAt; // created_at
+	final DateTime? updatedAt; // updated_at
 
 	const Visitor({
 		required this.id,
@@ -17,6 +23,12 @@ class Visitor {
 		required this.exitDate,
 		required this.ownerId,
 		required this.hostName,
+		this.status,
+		this.purpose,
+		this.vehiclePlate,
+		this.notes,
+		this.createdAt,
+		this.updatedAt,
 	});
 
 	factory Visitor.fromJson(Map<String, dynamic> json) {
@@ -49,6 +61,16 @@ class Visitor {
 			exitDate: toDate(json['exit_date'] ?? json['exitDate']),
 			ownerId: toIntOrNull(json['Owner_id'] ?? json['owner_id']),
 			hostName: toStr(json['host_name'] ?? json['hostName']),
+			status: json.containsKey('status') ? toStr(json['status']) : null,
+			purpose: json.containsKey('purpose')
+				? toStr(json['purpose'] ?? json['visit_purpose'])
+				: null,
+			vehiclePlate: json.containsKey('vehicle_plate')
+				? toStr(json['vehicle_plate'])
+				: null,
+			notes: json.containsKey('notes') ? toStr(json['notes']) : null,
+			createdAt: toDate(json['created_at'] ?? json['createdAt']),
+			updatedAt: toDate(json['updated_at'] ?? json['updatedAt']),
 		);
 	}
 
@@ -62,6 +84,12 @@ class Visitor {
 			'exit_date': exitDate?.toIso8601String(),
 			'Owner_id': ownerId,
 			'host_name': hostName,
+			'status': status,
+			'purpose': purpose,
+			'vehicle_plate': vehiclePlate,
+			'notes': notes,
+			'created_at': createdAt?.toIso8601String(),
+			'updated_at': updatedAt?.toIso8601String(),
 		};
 	}
 }
