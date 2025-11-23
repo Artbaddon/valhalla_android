@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:valhalla_android/models/packages/packages_model.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
 import 'package:valhalla_android/services/packages_service.dart';
+import 'package:valhalla_android/utils/colors.dart';
 import 'package:valhalla_android/utils/navigation_config.dart';
 
 const Color secondaryColor = Color.fromRGBO(73, 76, 162, 1);
@@ -131,20 +132,23 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
       final q = _query.toLowerCase();
       out = out.where((p) {
         return p.packageId.toLowerCase().contains(q) ||
-               p.packageType.toLowerCase().contains(q) ||
-               p.recipientApartment.toLowerCase().contains(q) ||
-               p.recipientTower.toLowerCase().contains(q) ||
-               (p.recipientOwnerId?.toString() ?? '').contains(q) ||
-               p.id.toLowerCase().contains(q) ||
-               (p.status ?? '').toLowerCase().contains(q) ||
-               (p.senderName ?? '').toLowerCase().contains(q);
+            p.packageType.toLowerCase().contains(q) ||
+            p.recipientApartment.toLowerCase().contains(q) ||
+            p.recipientTower.toLowerCase().contains(q) ||
+            (p.recipientOwnerId?.toString() ?? '').contains(q) ||
+            p.id.toLowerCase().contains(q) ||
+            (p.status ?? '').toLowerCase().contains(q) ||
+            (p.senderName ?? '').toLowerCase().contains(q);
       });
     }
 
     return out.toList();
   }
 
-  Future<void> _openFilters(List<String> availableTypes, List<String> statuses) async {
+  Future<void> _openFilters(
+    List<String> availableTypes,
+    List<String> statuses,
+  ) async {
     String? tmpType = _typeFilter;
     String? tmpStatus = _statusFilter;
 
@@ -160,7 +164,10 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Filtrar por tipo', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  'Filtrar por tipo',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 for (final t in types)
                   RadioListTile<String?>(
                     value: t == 'Todos' ? null : t,
@@ -172,7 +179,10 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                     title: Text(t),
                   ),
                 const Divider(),
-                const Text('Filtrar por estado', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  'Filtrar por estado',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 for (final s in states)
                   RadioListTile<String?>(
                     value: s == 'Todos' ? null : s,
@@ -222,7 +232,10 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
             future: _service.fetchById(id),
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+                return const SizedBox(
+                  height: 80,
+                  child: Center(child: CircularProgressIndicator()),
+                );
               }
               if (snap.hasError) return Text('Error: ${snap.error}');
               final p = snap.data!;
@@ -253,7 +266,10 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
             },
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
           ],
         );
       },
@@ -310,13 +326,14 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
         await _refresh();
       } on DioException catch (e) {
         if (!mounted) return;
-        final message = e.response?.data is Map &&
+        final message =
+            e.response?.data is Map &&
                 (e.response!.data as Map)['error'] is String
             ? (e.response!.data as Map)['error'] as String
             : e.message ?? 'Error al registrar el paquete';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } finally {
         if (mounted) {
           setStateDialog(() => submitting = false);
@@ -331,10 +348,15 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
           builder: (dialogContext, setStateDialog) {
             return AlertDialog(
               backgroundColor: const Color(0xFFF2F3FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
               title: const Text(
                 'Registrar paquete',
-                style: TextStyle(color: secondaryColor, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               content: SingleChildScrollView(
                 child: Form(
@@ -361,21 +383,27 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                         controller: apartmentCtrl,
                         decoration: _fieldDecoration('Apartamento'),
                         validator: (value) =>
-                            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+                            (value == null || value.trim().isEmpty)
+                            ? 'Requerido'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: towerCtrl,
                         decoration: _fieldDecoration('Torre'),
                         validator: (value) =>
-                            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+                            (value == null || value.trim().isEmpty)
+                            ? 'Requerido'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: senderNameCtrl,
                         decoration: _fieldDecoration('Remitente'),
                         validator: (value) =>
-                            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+                            (value == null || value.trim().isEmpty)
+                            ? 'Requerido'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -393,9 +421,18 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                         value: packageType,
                         decoration: _fieldDecoration('Tipo de paquete'),
                         items: const [
-                          DropdownMenuItem(value: 'package', child: Text('Paquete')),
-                          DropdownMenuItem(value: 'envelope', child: Text('Sobre')),
-                          DropdownMenuItem(value: 'document', child: Text('Documento')),
+                          DropdownMenuItem(
+                            value: 'package',
+                            child: Text('Paquete'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'envelope',
+                            child: Text('Sobre'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'document',
+                            child: Text('Documento'),
+                          ),
                           DropdownMenuItem(value: 'other', child: Text('Otro')),
                         ],
                         onChanged: (value) {
@@ -408,9 +445,18 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                         value: size,
                         decoration: _fieldDecoration('Tamaño'),
                         items: const [
-                          DropdownMenuItem(value: 'small', child: Text('Pequeño')),
-                          DropdownMenuItem(value: 'medium', child: Text('Mediano')),
-                          DropdownMenuItem(value: 'large', child: Text('Grande')),
+                          DropdownMenuItem(
+                            value: 'small',
+                            child: Text('Pequeño'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'medium',
+                            child: Text('Mediano'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'large',
+                            child: Text('Grande'),
+                          ),
                         ],
                         onChanged: (value) {
                           if (value == null) return;
@@ -420,20 +466,27 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: weightCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: _fieldDecoration('Peso (kg)'),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: guardNotesCtrl,
-                        decoration: _fieldDecoration('Notas del guardia (opcional)'),
+                        decoration: _fieldDecoration(
+                          'Notas del guardia (opcional)',
+                        ),
                         maxLines: 2,
                       ),
                     ],
                   ),
                 ),
               ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
                   onPressed: submitting ? null : () => Navigator.pop(context),
@@ -447,7 +500,10 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: secondaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -472,8 +528,12 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
   Future<void> _showStatusDialog(Packages package) async {
     final formKey = GlobalKey<FormState>();
     String status = package.status ?? 'pending';
-    final deliveryNotesCtrl = TextEditingController(text: package.deliveryNotes ?? '');
-    final signatureCtrl = TextEditingController(text: package.recipientSignature ?? '');
+    final deliveryNotesCtrl = TextEditingController(
+      text: package.deliveryNotes ?? '',
+    );
+    final signatureCtrl = TextEditingController(
+      text: package.recipientSignature ?? '',
+    );
     bool submitting = false;
 
     Future<void> submit(StateSetter setStateDialog) async {
@@ -495,19 +555,20 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
         await _service.updateStatus(package.packageId, payload);
         if (!mounted) return;
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Estado actualizado')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Estado actualizado')));
         await _refresh();
       } on DioException catch (e) {
         if (!mounted) return;
-        final message = e.response?.data is Map &&
+        final message =
+            e.response?.data is Map &&
                 (e.response!.data as Map)['error'] is String
             ? (e.response!.data as Map)['error'] as String
             : e.message ?? 'Error al actualizar';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } finally {
         if (mounted) {
           setStateDialog(() => submitting = false);
@@ -522,10 +583,15 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
           builder: (dialogContext, setStateDialog) {
             return AlertDialog(
               backgroundColor: const Color(0xFFF2F3FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
               title: const Text(
                 'Actualizar estado',
-                style: TextStyle(color: secondaryColor, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               content: Form(
                 key: formKey,
@@ -536,9 +602,18 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                       value: status,
                       decoration: _fieldDecoration('Estado'),
                       items: const [
-                        DropdownMenuItem(value: 'pending', child: Text('Pendiente')),
-                        DropdownMenuItem(value: 'notified', child: Text('Notificado')),
-                        DropdownMenuItem(value: 'delivered', child: Text('Entregado')),
+                        DropdownMenuItem(
+                          value: 'pending',
+                          child: Text('Pendiente'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'notified',
+                          child: Text('Notificado'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'delivered',
+                          child: Text('Entregado'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value == null) return;
@@ -559,7 +634,10 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                   ],
                 ),
               ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
                   onPressed: submitting ? null : () => Navigator.pop(context),
@@ -573,7 +651,10 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: secondaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -614,19 +695,21 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
           final visible = _applyFilters(items);
 
           // Unique package types for filter sheet
-          final availableTypes = items
-              .map((p) => p.packageType)
-              .where((t) => t.isNotEmpty)
-              .toSet()
-              .toList()
-            ..sort();
+          final availableTypes =
+              items
+                  .map((p) => p.packageType)
+                  .where((t) => t.isNotEmpty)
+                  .toSet()
+                  .toList()
+                ..sort();
 
-          final availableStatuses = items
-              .map((p) => p.status ?? '')
-              .where((t) => t.isNotEmpty)
-              .toSet()
-              .toList()
-            ..sort();
+          final availableStatuses =
+              items
+                  .map((p) => p.status ?? '')
+                  .where((t) => t.isNotEmpty)
+                  .toSet()
+                  .toList()
+                ..sort();
 
           return RefreshIndicator(
             onRefresh: _refresh,
@@ -636,19 +719,29 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Paquetes',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Paquetes',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.secondary
+                      ),
+                    ),
                     if (canManage)
                       ElevatedButton.icon(
                         onPressed: _showCreateDialog,
-                        icon: const Icon(Icons.add, color: Colors.white),
+                        icon: const Icon(Icons.add),
                         label: const Text('Registrar'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: secondaryColor,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                   ],
@@ -663,21 +756,31 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                           controller: _searchCtrl,
                           decoration: InputDecoration(
                             hintText: 'Buscar...',
-                            prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.grey,
+                            ),
                             suffixIcon: (_query.isEmpty)
                                 ? null
                                 : IconButton(
-                                    icon: const Icon(Icons.clear, color: Colors.grey),
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.grey,
+                                    ),
                                     onPressed: () => _searchCtrl.clear(),
                                   ),
                             border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(20)),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(20),
+                              ),
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 0,
+                              horizontal: 10,
+                            ),
                           ),
                         ),
                       ),
@@ -696,9 +799,12 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: secondaryColor,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         minimumSize: const Size(0, 40),
                       ),
                     ),
@@ -724,30 +830,41 @@ class _PackagesAdminScreenState extends State<PackagesAdminScreen> {
                         DataColumn(label: Text('Acciones')),
                       ],
                       rows: visible.map((p) {
-                        return DataRow(cells: [
-                          DataCell(Text(p.packageId)),
-                          DataCell(Text(p.packageType)),
-                          DataCell(Text(p.status ?? '—')),
-                          DataCell(Text(p.recipientApartment)),
-                          DataCell(Text(p.recipientTower)),
-                          DataCell(Text(p.recipientOwnerId?.toString() ?? '—')),
-                          DataCell(Text(_fmtDate(p.createdAt))),
-                          DataCell(Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_red_eye_outlined),
-                                tooltip: 'Ver',
-                                onPressed: () => _showPackageDetail(context, p.id),
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(p.packageId)),
+                            DataCell(Text(p.packageType)),
+                            DataCell(Text(p.status ?? '—')),
+                            DataCell(Text(p.recipientApartment)),
+                            DataCell(Text(p.recipientTower)),
+                            DataCell(
+                              Text(p.recipientOwnerId?.toString() ?? '—'),
+                            ),
+                            DataCell(Text(_fmtDate(p.createdAt))),
+                            DataCell(
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_red_eye_outlined,
+                                    ),
+                                    tooltip: 'Ver',
+                                    onPressed: () =>
+                                        _showPackageDetail(context, p.id),
+                                  ),
+                                  if (canManage)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit_note_outlined,
+                                      ),
+                                      tooltip: 'Actualizar estado',
+                                      onPressed: () => _showStatusDialog(p),
+                                    ),
+                                ],
                               ),
-                              if (canManage)
-                                IconButton(
-                                  icon: const Icon(Icons.edit_note_outlined),
-                                  tooltip: 'Actualizar estado',
-                                  onPressed: () => _showStatusDialog(p),
-                                ),
-                            ],
-                          )),
-                        ]);
+                            ),
+                          ],
+                        );
                       }).toList(),
                     ),
                   ),

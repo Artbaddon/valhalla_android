@@ -10,8 +10,9 @@ import 'package:valhalla_android/utils/navigation_config.dart';
 import 'package:valhalla_android/utils/routes.dart';
 import 'package:valhalla_android/widgets/navigation/app_bottom_nav.dart';
 import 'package:valhalla_android/widgets/navigation/top_navbar.dart';
-import 'package:valhalla_android/screens/admin/admin_dashboard.dart';
 import 'package:valhalla_android/screens/visitors/visitors_page.dart';
+import 'package:valhalla_android/screens/news/news_page.dart';
+import 'package:valhalla_android/screens/profile/profile_page.dart';
 
 class HomePageShell extends StatefulWidget {
   const HomePageShell({super.key});
@@ -29,9 +30,7 @@ class _HomePageShellState extends State<HomePageShell> {
     final auth = context.watch<AuthProvider>();
     final role = auth.role;
     if (role == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final config = roleNavigation[role]!;
@@ -41,7 +40,7 @@ class _HomePageShellState extends State<HomePageShell> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-  appBar: TopNavbar(role: role),
+      appBar: TopNavbar(role: role),
       body: _buildBody(currentItem.route),
       bottomNavigationBar: AppBottomNav(
         items: navItems,
@@ -65,11 +64,11 @@ class _HomePageShellState extends State<HomePageShell> {
   Widget _buildBody(String route) {
     switch (route) {
       case AppRoutes.homeAdmin:
-        return const AdminDashboardPage();
+        return const NewsPage();
       case AppRoutes.homeOwner:
-        return const Center(child: Text('Panel de propietario'));
+        return const NewsPage();
       case AppRoutes.homeGuard:
-        return const Center(child: Text('Panel de guardia'));
+        return const NewsPage();
       case AppRoutes.parkingHome:
         return const ParkingScreen();
       case AppRoutes.reservationsHome:
@@ -81,7 +80,8 @@ class _HomePageShellState extends State<HomePageShell> {
       case AppRoutes.packagesHome:
         return const PackagesAdminScreen();
       case AppRoutes.profilePage:
-        return const Center(child: Text('Perfil'));
+        final auth = context.watch<AuthProvider>();
+        return ProfilePage(displayName: auth.user?.username ?? 'Usuario');
       default:
         return const Center(child: Text('Sección no disponible'));
     }

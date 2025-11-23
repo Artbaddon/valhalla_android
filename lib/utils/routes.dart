@@ -27,6 +27,8 @@ class AppRoutes {
   // Visitors
   static const String visitorsHome = '/visitors-home';
   static const String visitorForm = '/visitor-form';
+  // Notification
+  static const String notification = '/notification-home';
 
   static const String infoCard = '/info-card';
 

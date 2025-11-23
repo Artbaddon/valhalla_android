@@ -1,14 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
 import 'package:valhalla_android/services/payment_service.dart';
 import 'package:valhalla_android/utils/colors.dart';
-import 'package:valhalla_android/utils/navigation_config.dart';
-import 'package:valhalla_android/utils/routes.dart';
-import 'package:valhalla_android/widgets/navigation/app_bottom_nav.dart';
-import 'package:valhalla_android/widgets/navigation/top_navbar.dart';
+
 
 class PaymentCreatePage extends StatefulWidget {
   const PaymentCreatePage({super.key});
@@ -137,24 +133,8 @@ class _PaymentCreatePageState extends State<PaymentCreatePage> {
       );
     }
 
-    final config = roleNavigation[role]!;
-    final navItems = config.navItems;
-    final navIndex = navItems.indexWhere(
-      (item) => item.route == AppRoutes.paymentsHome,
-    );
-    final currentIndex = navIndex == -1 ? 0 : navIndex;
-
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: TopNavbar(role: role),
-      bottomNavigationBar: AppBottomNav(
-        items: navItems,
-        currentIndex: currentIndex,
-        onTap: (index) {
-          final route = navItems[index].route;
-          context.go(route);
-        },
-      ),
+      
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

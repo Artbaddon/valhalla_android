@@ -20,13 +20,12 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _status == AuthStatus.authenticated;
 
   UserRole? get role {
-    final name = user?.roleName.toLowerCase();
-    switch (name) {
-      case 'admin':
+    switch (user?.roleId) {
+      case 1:
         return UserRole.admin;
-      case 'security':
+      case 3:
         return UserRole.security;
-      case 'owner':
+      case 2:
         return UserRole.owner;
       default:
         return null;
@@ -52,7 +51,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     final result = await _authService.login(username, password);
-    
+
     if (result['success']) {
       _user = await StorageService.getUser();
       _status = AuthStatus.authenticated;

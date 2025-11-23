@@ -59,7 +59,9 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
   void _scheduleLoad(UserRole? role, int? ownerId) {
     if (role == null) return;
     final desiredOwnerId = role == UserRole.owner ? ownerId : null;
-    if (_future != null && _futureRole == role && _futureOwnerId == desiredOwnerId) {
+    if (_future != null &&
+        _futureRole == role &&
+        _futureOwnerId == desiredOwnerId) {
       return;
     }
 
@@ -97,16 +99,30 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: ElevatedButton(
-            onPressed: () => context.push(AppRoutes.paymentHistory),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.purple,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        Padding(
+          // <-- Agregamos el Padding aquí
+          padding: const EdgeInsets.only(
+            left: 16,
+          ), // <-- Definimos el padding solo a la izquierda
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton(
+              onPressed: () => context.push(AppRoutes.paymentHistory),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.purple,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 6,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              child: const Text(
+                'Historial',
+                style: TextStyle(fontSize: 12, color: Colors.white),
+              ),
             ),
-            child: const Text('Historial', style: TextStyle(fontSize: 12, color: Colors.white)),
           ),
         ),
         const SizedBox(height: 8),
@@ -128,7 +144,10 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                   onRefresh: _refresh,
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 20,
+                    ),
                     children: [
                       Container(
                         padding: const EdgeInsets.all(24),
@@ -151,7 +170,10 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                 onRefresh: _refresh,
                 child: ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   itemCount: items.length + (isAdmin ? 1 : 0),
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
@@ -176,10 +198,10 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                                     extra: PaymentMethodsArgs(payment: payment),
                                   )
                                   .then((result) {
-                                if (result == true) {
-                                  _refresh();
-                                }
-                              });
+                                    if (result == true) {
+                                      _refresh();
+                                    }
+                                  });
                             }
                           : null,
                     );
@@ -219,12 +241,22 @@ class _PaymentItemCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: 12),
-            Text('Total: $amount', style: const TextStyle(fontSize: 14, color: Colors.black)),
+            Text(
+              'Total: $amount',
+              style: const TextStyle(fontSize: 14, color: Colors.black),
+            ),
             const SizedBox(height: 4),
-            Text('Estado: $status', style: const TextStyle(fontSize: 12, color: Colors.black87)),
+            Text(
+              'Estado: $status',
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+            ),
             if (onContinue != null) ...[
               const SizedBox(height: 16),
               Align(
@@ -233,10 +265,18 @@ class _PaymentItemCard extends StatelessWidget {
                   onPressed: onContinue,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.purple,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                   ),
-                  child: const Text('Pagar', style: TextStyle(fontSize: 12, color: Colors.white)),
+                  child: const Text(
+                    'Pagar',
+                    style: TextStyle(fontSize: 12, color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -258,15 +298,12 @@ class _AdminCreateButton extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () async {
-          await context.push(AppRoutes.paymentCreate);
-          await onCreated();
+          context.push(AppRoutes.paymentCreate);
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.purple,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
         child: const Text(
           'Crear pago',
@@ -276,6 +313,3 @@ class _AdminCreateButton extends StatelessWidget {
     );
   }
 }
-
-
-

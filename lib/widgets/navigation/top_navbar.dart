@@ -14,15 +14,15 @@ class TopNavbar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    final showNotifications = role == null || role == UserRole.admin;
+    final showNotifications =
+        role == null || role == UserRole.admin || role == UserRole.owner;
 
     return AppBar(
       elevation: 0,
       backgroundColor: Colors.transparent,
       centerTitle: true,
       title: Text(
-       'Valhalla' ,
+        'Valhalla',
         style: const TextStyle(
           fontSize: 32,
           fontWeight: FontWeight.bold,
@@ -32,7 +32,9 @@ class TopNavbar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         if (showNotifications)
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              context.push(AppRoutes.notification);
+            },
             icon: const Icon(
               CupertinoIcons.bell,
               color: AppColors.purple,

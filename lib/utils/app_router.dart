@@ -9,6 +9,7 @@ import 'package:valhalla_android/utils/routes.dart';
 // Screens
 import 'package:valhalla_android/screens/auth/change_password_page.dart';
 import 'package:valhalla_android/screens/auth/login_page.dart';
+import 'package:valhalla_android/screens/notification/notification_page.dart';
 import 'package:valhalla_android/screens/auth/recover_page.dart';
 import 'package:valhalla_android/screens/main/home_page.dart';
 import 'package:valhalla_android/screens/packages/packages_page.dart';
@@ -143,6 +144,10 @@ class AppRouter {
             }
             return payment_make.PaymentMakePage(args: extra);
           },
+        ),
+        GoRoute(
+          path: AppRoutes.notification,
+          builder: (ctx, s) => const NotificationsPage(),
         ),
         GoRoute(
           path: AppRoutes.paymentHistory,

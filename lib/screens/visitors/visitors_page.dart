@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -165,7 +164,10 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
             );
           },
         ),
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -208,13 +210,14 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
         await _refresh();
       } on DioException catch (e) {
         if (!mounted) return;
-        final message = e.response?.data is Map &&
+        final message =
+            e.response?.data is Map &&
                 (e.response!.data as Map)['error'] is String
             ? (e.response!.data as Map)['error'] as String
             : e.message ?? 'Error al registrar visitante';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } finally {
         if (mounted) {
           setStateDialog(() => submitting = false);
@@ -229,10 +232,15 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
           builder: (dialogContext, setStateDialog) {
             return AlertDialog(
               backgroundColor: const Color(0xFFF2F3FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
               title: const Text(
                 'Registrar visitante',
-                style: TextStyle(color: secondaryColor, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               content: SingleChildScrollView(
                 child: Form(
@@ -259,20 +267,27 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                         controller: nameCtrl,
                         decoration: _fieldDecoration('Nombre del visitante'),
                         validator: (value) =>
-                            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+                            (value == null || value.trim().isEmpty)
+                            ? 'Requerido'
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: documentCtrl,
                         decoration: _fieldDecoration('Documento'),
                         validator: (value) =>
-                            (value == null || value.trim().isEmpty) ? 'Requerido' : null,
+                            (value == null || value.trim().isEmpty)
+                            ? 'Requerido'
+                            : null,
                       ),
                     ],
                   ),
                 ),
               ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
                   onPressed: submitting ? null : () => Navigator.pop(context),
@@ -286,7 +301,10 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                   style: FilledButton.styleFrom(
                     backgroundColor: secondaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -324,19 +342,20 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
         await _service.updateStatus(visitor.id, payload);
         if (!mounted) return;
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Estado actualizado')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Estado actualizado')));
         await _refresh();
       } on DioException catch (e) {
         if (!mounted) return;
-        final message = e.response?.data is Map &&
+        final message =
+            e.response?.data is Map &&
                 (e.response!.data as Map)['error'] is String
             ? (e.response!.data as Map)['error'] as String
             : e.message ?? 'Error al actualizar';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       } finally {
         if (mounted) {
           setStateDialog(() => submitting = false);
@@ -351,10 +370,15 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
           builder: (dialogContext, setStateDialog) {
             return AlertDialog(
               backgroundColor: const Color(0xFFF2F3FF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
               title: const Text(
                 'Actualizar estado',
-                style: TextStyle(color: secondaryColor, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               content: Form(
                 key: formKey,
@@ -362,9 +386,18 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                   value: status,
                   decoration: _fieldDecoration('Estado'),
                   items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Pendiente')),
-                    DropdownMenuItem(value: 'authorized', child: Text('Autorizado')),
-                    DropdownMenuItem(value: 'checked_out', child: Text('Salida registrada')),
+                    DropdownMenuItem(
+                      value: 'pending',
+                      child: Text('Pendiente'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'authorized',
+                      child: Text('Autorizado'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'checked_out',
+                      child: Text('Salida registrada'),
+                    ),
                   ],
                   onChanged: (value) {
                     if (value == null) return;
@@ -372,7 +405,10 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                   },
                 ),
               ),
-              actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               actions: [
                 TextButton(
                   onPressed: submitting ? null : () => Navigator.pop(context),
@@ -386,7 +422,10 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                   style: FilledButton.styleFrom(
                     backgroundColor: secondaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -435,7 +474,11 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                   children: [
                     const Text(
                       'Visitantes',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: secondaryColor, 
+                      ),
                     ),
                     if (_canManage)
                       ElevatedButton.icon(
@@ -444,10 +487,14 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                         label: const Text('Registrar'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: secondaryColor,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                   ],
@@ -472,8 +519,10 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 10,
+                      ),
                     ),
                   ),
                 ),
@@ -496,29 +545,37 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                         DataColumn(label: Text('Acciones')),
                       ],
                       rows: visible.map((v) {
-                        return DataRow(cells: [
-                          DataCell(Text(v.name)),
-                          DataCell(Text(v.documentNumber)),
-                          DataCell(Text(v.hostName)),
-                          DataCell(Text(v.status ?? '—')),
-                          DataCell(Text(_fmtDate(v.enterDate))),
-                          DataCell(Text(_fmtDate(v.exitDate))),
-                          DataCell(Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_red_eye_outlined),
-                                tooltip: 'Ver',
-                                onPressed: () => _showVisitorDetail(v.id),
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(v.name)),
+                            DataCell(Text(v.documentNumber)),
+                            DataCell(Text(v.hostName)),
+                            DataCell(Text(v.status ?? '—')),
+                            DataCell(Text(_fmtDate(v.enterDate))),
+                            DataCell(Text(_fmtDate(v.exitDate))),
+                            DataCell(
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_red_eye_outlined,
+                                    ),
+                                    tooltip: 'Ver',
+                                    onPressed: () => _showVisitorDetail(v.id),
+                                  ),
+                                  if (_canManage)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit_note_outlined,
+                                      ),
+                                      tooltip: 'Actualizar estado',
+                                      onPressed: () => _showStatusDialog(v),
+                                    ),
+                                ],
                               ),
-                              if (_canManage)
-                                IconButton(
-                                  icon: const Icon(Icons.edit_note_outlined),
-                                  tooltip: 'Actualizar estado',
-                                  onPressed: () => _showStatusDialog(v),
-                                ),
-                            ],
-                          )),
-                        ]);
+                            ),
+                          ],
+                        );
                       }).toList(),
                     ),
                   ),

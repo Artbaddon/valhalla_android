@@ -109,6 +109,7 @@ final roleNavigation = {
       AppRoutes.paymentHistory,
       AppRoutes.packagesHome,
       AppRoutes.packageForm,
+      AppRoutes.notification,
     ],
   ),
   UserRole.admin: _buildConfig(
@@ -134,6 +135,7 @@ final roleNavigation = {
       AppRoutes.visitorForm,
       AppRoutes.packagesHome,
       AppRoutes.packageForm,
+      AppRoutes.notification,
     ],
   ),
   UserRole.security: _buildConfig(

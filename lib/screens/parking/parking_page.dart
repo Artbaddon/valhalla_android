@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:valhalla_android/models/parking/parking_model.dart';
+import 'package:valhalla_android/models/owner/owner_model.dart';
 import 'package:valhalla_android/services/parking_service.dart';
+import 'package:valhalla_android/services/owner_service.dart';
 import 'dart:async'; // <-- add for debounce
 import 'package:provider/provider.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
@@ -30,11 +32,20 @@ class _ParkingScreenState extends State<ParkingScreen> {
   String _query = '';
   String? _typeFilter; // 'resident' | 'visitor' | null
   Timer? _debounce;
+  List<Owner> _owners = [];
+  List<ParkingType> _parkingTypes = [];
+  List<ParkingStatus> _parkingStatuses = [];
+  bool _loadingOwners = false;
+  bool _loadingTypes = false;
+  bool _loadingStatuses = false;
 
   @override
   void initState() {
     super.initState();
     _future = _service.fetchAll();
+    _loadOwners();
+    _loadParkingTypes();
+    _loadParkingStatuses();
 
     _searchCtrl.addListener(() {
       // debounce to avoid too many rebuilds
@@ -44,6 +55,54 @@ class _ParkingScreenState extends State<ParkingScreen> {
         setState(() => _query = _searchCtrl.text.trim());
       });
     });
+  }
+
+  Future<void> _loadOwners() async {
+    if (_loadingOwners) return;
+
+    setState(() {
+      _loadingOwners = true;
+    });
+
+    try {
+      final ownerService = OwnerService();
+      final owners = await ownerService.getAllOwners();
+      setState(() {
+        _owners = owners;
+        _loadingOwners = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadingOwners = false;
+      });
+      print('Error loading owners: $e');
+    }
+  }
+
+  Future<void> _loadParkingTypes() async {
+    if (_loadingTypes) return;
+    setState(() => _loadingTypes = true);
+    try {
+      final types = await _service.getParkingTypes();
+      setState(() => _parkingTypes = types);
+    } catch (e) {
+      print('Error loading parking types: $e');
+    } finally {
+      setState(() => _loadingTypes = false);
+    }
+  }
+
+  Future<void> _loadParkingStatuses() async {
+    if (_loadingStatuses) return;
+    setState(() => _loadingStatuses = true);
+    try {
+      final statuses = await _service.getParkingStatuses();
+      setState(() => _parkingStatuses = statuses);
+    } catch (e) {
+      print('Error loading parking statuses: $e');
+    } finally {
+      setState(() => _loadingStatuses = false);
+    }
   }
 
   @override
@@ -118,418 +177,313 @@ class _ParkingScreenState extends State<ParkingScreen> {
     }
   }
 
+  Future<void> _showParkingForm(String mode, {Parking? parking}) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        final isEdit = mode == 'edit';
+        final isView = mode == 'view';
+        final isAdd = mode == 'add';
+        final numberCtrl = TextEditingController(text: parking?.number ?? '');
+
+        // ✅ CORREGIR: orElse debe retornar Owner, usar try-catch en su lugar
+        Owner? findOwner() {
+          if (parking != null && (isEdit || isView) && parking.userId != null) {
+            try {
+              return _owners.firstWhere(
+                (owner) => owner.userFkId == parking.userId,
+              );
+            } catch (e) {
+              return null;
+            }
+          }
+          return null;
+        }
+
+        final typeValueNotifier = ValueNotifier<String?>(
+          parking != null
+              ? _findParkingTypeId(parking.parkingType)
+              : (_parkingTypes.isNotEmpty
+                    ? _parkingTypes.first.id.toString()
+                    : '1'),
+        );
+
+        final statusValueNotifier = ValueNotifier<String?>(
+          parking != null
+              ? _findParkingStatusId(parking.status)
+              : (_parkingStatuses.isNotEmpty
+                    ? _parkingStatuses.first.id.toString()
+                    : '1'),
+        );
+
+        final selectedOwnerNotifier = ValueNotifier<Owner?>(findOwner());
+
+        return StatefulBuilder(
+          builder: (ctx, setInnerState) {
+            final formKey = GlobalKey<FormState>();
+
+            // ✅ Cargar owners si es necesario
+            if ((isEdit || isView) && _owners.isEmpty && !_loadingOwners) {
+              _loadOwners();
+            }
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFFF2F3FF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    switch (mode) {
+                      'add' => 'Añadir Parqueadero',
+                      'edit' => 'Editar Parqueadero',
+                      _ => 'Detalle de Parqueadero',
+                    },
+                    style: const TextStyle(
+                      color: secondaryColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1, color: secondaryColor),
+                ],
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: numberCtrl,
+                      enabled: !isView,
+                      decoration: _fieldDecoration('Número'),
+                      validator: isView
+                          ? null
+                          : (value) => (value == null || value.trim().isEmpty)
+                                ? 'Ingrese el número'
+                                : null,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ✅ DROPDOWN DE TIPOS CON ValueListenableBuilder
+                    ValueListenableBuilder<String?>(
+                      valueListenable: typeValueNotifier,
+                      builder: (context, typeValue, child) {
+                        return DropdownButtonFormField<String>(
+                          value: typeValue,
+                          decoration: _fieldDecoration('Tipo de Parqueadero'),
+                          items: _parkingTypes.map((type) {
+                            return DropdownMenuItem(
+                              value: type.id.toString(),
+                              child: Text(type.name),
+                            );
+                          }).toList(),
+                          onChanged: isView
+                              ? null
+                              : (value) {
+                                  typeValueNotifier.value = value;
+                                  setInnerState(() {}); // Forzar rebuild
+                                },
+                          validator: isView || _parkingTypes.isEmpty
+                              ? null
+                              : (value) =>
+                                    value == null ? 'Seleccione un tipo' : null,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ✅ DROPDOWN DE ESTADOS CON ValueListenableBuilder
+                    ValueListenableBuilder<String?>(
+                      valueListenable: statusValueNotifier,
+                      builder: (context, statusValue, child) {
+                        return DropdownButtonFormField<String>(
+                          value: statusValue,
+                          decoration: _fieldDecoration('Estado'),
+                          items: _parkingStatuses.map((status) {
+                            return DropdownMenuItem(
+                              value: status.id.toString(),
+                              child: Text(status.name),
+                            );
+                          }).toList(),
+                          onChanged: isView
+                              ? null
+                              : (value) {
+                                  statusValueNotifier.value = value;
+                                  setInnerState(() {}); // Forzar rebuild
+                                },
+                          validator: isView
+                              ? null
+                              : (value) => value == null
+                                    ? 'Seleccione el estado'
+                                    : null,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (isEdit || isView) ...[
+                      if (_loadingOwners && isEdit) ...[
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 8),
+                        const Text('Cargando propietarios...'),
+                      ] else
+                        ValueListenableBuilder<Owner?>(
+                          valueListenable: selectedOwnerNotifier,
+                          builder: (context, selectedOwner, child) {
+                            return isView
+                                ? TextFormField(
+                                    enabled: false,
+                                    decoration: _fieldDecoration('Propietario'),
+                                    initialValue: selectedOwner != null
+                                        ? selectedOwner.fullName
+                                        : 'Ninguno',
+                                  )
+                                : DropdownButtonFormField<Owner?>(
+                                    value: selectedOwner,
+                                    decoration: _fieldDecoration(
+                                      'Propietario (opcional)',
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem<Owner?>(
+                                        value: null,
+                                        child: Text('Ninguno'),
+                                      ),
+                                      ..._owners.map((owner) {
+                                        return DropdownMenuItem<Owner>(
+                                          value: owner,
+                                          child: Text(
+                                            owner.fullName,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ],
+                                    onChanged: (Owner? newOwner) {
+                                      selectedOwnerNotifier.value = newOwner;
+                                      setInnerState(() {}); // Forzar rebuild
+                                    },
+                                    isExpanded: true,
+                                  );
+                          },
+                        ),
+                    ] else if (isAdd) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'El propietario se asignará después de crear el parqueadero',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cerrar'),
+                ),
+                if (!isView)
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: secondaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    onPressed: () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+
+                      final apiPayload = {
+                        'number': numberCtrl.text.trim(),
+                        'type_id': int.parse(typeValueNotifier.value ?? '1'),
+                        'status_id': int.parse(
+                          statusValueNotifier.value ?? '1',
+                        ),
+                        if (isEdit && selectedOwnerNotifier.value != null)
+                          'user_id': selectedOwnerNotifier.value!.userFkId,
+                      };
+
+                      try {
+                        if (isEdit) {
+                          await _service.update(parking!.id, apiPayload);
+                        } else {
+                          await _service.create(apiPayload);
+                        }
+                        if (!mounted) return;
+                        Navigator.pop(context);
+                        setState(() {
+                          _future = _service.fetchAll();
+                        });
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    },
+                    child: Text(isEdit ? 'Guardar' : 'Añadir'),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _findParkingTypeId(String parkingTypeName) {
+    if (_parkingTypes.isEmpty) return '1';
+
+    try {
+      final type = _parkingTypes.firstWhere(
+        (type) => type.name.toLowerCase() == parkingTypeName.toLowerCase(),
+        orElse: () => _parkingTypes.first,
+      );
+      return type.id.toString();
+    } catch (e) {
+      return _parkingTypes.first.id.toString();
+    }
+  }
+
+  String _findParkingStatusId(String statusName) {
+    if (_parkingStatuses.isEmpty) return '1';
+
+    try {
+      final status = _parkingStatuses.firstWhere(
+        (status) => status.name.toLowerCase() == statusName.toLowerCase(),
+        orElse: () => _parkingStatuses.first,
+      );
+      return status.id.toString();
+    } catch (e) {
+      return _parkingStatuses.first.id.toString();
+    }
+  }
+
+  // ✅ Agrega este método helper si no lo tienes
   InputDecoration _fieldDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: secondaryColor),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       filled: true,
       fillColor: Colors.white,
-      prefixIconColor: secondaryColor,
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: secondaryColor, width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: accentColor, width: 2),
-      ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: secondaryColor.withOpacity(0.3)),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 
-  Widget _parkingForm(BuildContext context, String mode, {Parking? parking}) {
-    final isEdit = mode == 'edit';
-    final isView = mode == 'view';
-    final numberCtrl = TextEditingController(text: parking?.number ?? '');
-    final typeCtrl = TextEditingController(text: parking?.parkingType ?? '');
-    final vehicleCtrl = TextEditingController(text: parking?.vehicleType ?? '');
-    final statusCtrl = TextEditingController(text: parking?.status ?? '');
-    final userCtrl = TextEditingController(
-      text: parking != null ? (parking.userId?.toString() ?? '') : '',
-    );
-    Map<int, String> statusOptions = {
-      1: 'Disponible',
-      2: 'Ocupado',
-      3: 'Reservado',
-    };
-    Map<int, String> typeOptions = {1: 'Residente', 2: 'Visitante'};
-    return AlertDialog(
-      backgroundColor: const Color(0xFFF2F3FF),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            switch (mode) {
-              'add' => 'Añadir Parqueadero',
-              'edit' => 'Editar Parqueadero',
-              _ => 'Detalle de Parqueadero',
-            },
-            style: const TextStyle(
-              color: secondaryColor,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Divider(height: 1, color: secondaryColor),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: numberCtrl,
-              enabled: !isView,
-              decoration: _fieldDecoration('Número'),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: typeCtrl.text.isNotEmpty ? typeCtrl.text : null,
-              decoration: _fieldDecoration('Tipo de Parqueadero'),
-              items: [
-                DropdownMenuItem(value: 'Residente', child: Text('Residente')),
-                DropdownMenuItem(value: 'Visitante', child: Text('Visitante')),
-              ],
-              onChanged: isView
-                  ? null
-                  : (value) {
-                      typeCtrl.text = value ?? '';
-                    },
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: statusCtrl.text.isNotEmpty ? statusCtrl.text : null,
-              decoration: _fieldDecoration('Estado'),
-              items: [
-                DropdownMenuItem(
-                  value: 'Disponible',
-                  child: Text('Disponible'),
-                ),
-                DropdownMenuItem(value: 'Ocupado', child: Text('Ocupado')),
-                DropdownMenuItem(value: 'Reservado', child: Text('Reservado')),
-              ],
-              onChanged: isView
-                  ? null
-                  : (value) {
-                      statusCtrl.text = value ?? '';
-                    },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: vehicleCtrl,
-              enabled: !isView,
-              decoration: _fieldDecoration('Tipo de Vehículo'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: statusCtrl,
-              enabled: !isView,
-              decoration: _fieldDecoration('Estado'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: userCtrl,
-              enabled: !isView,
-              decoration: _fieldDecoration('ID de Usuario (opcional)'),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-      ),
-      actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          style: TextButton.styleFrom(
-            foregroundColor: secondaryColor,
-            textStyle: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          child: const Text('Cerrar'),
-        ),
-        if (!isView)
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: secondaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-            ),
-            onPressed: () async {
-              final payload = Parking(
-                id: parking?.id ?? 0,
-                number: numberCtrl.text.trim(),
-                parkingType: typeCtrl.text.trim(),
-                vehicleType: vehicleCtrl.text.trim(),
-                status: statusCtrl.text.trim(),
-                userId: userCtrl.text.trim().isEmpty
-                    ? null
-                    : int.tryParse(userCtrl.text.trim()),
-              );
-              try {
-                if (isEdit) {
-                  await _service.update(payload.id, payload.toJson());
-                } else {
-                  await _service.create(payload.toJson());
-                }
-                if (!mounted) return;
-                Navigator.pop(context);
-                setState(() {
-                  _future = _service.fetchAll();
-                });
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Error: $e')));
-              }
-            },
-            child: Text(isEdit ? 'Guardar' : 'Añadir'),
-          ),
-      ],
-    );
-  }
-
-Future<void> _showParkingForm(String mode, {Parking? parking}) {
-  return showDialog<void>(
-    context: context,
-    builder: (dialogCtx) {
-      final isEdit = mode == 'edit';
-      final isView = mode == 'view';
-      final numberCtrl = TextEditingController(text: parking?.number ?? '');
-      final userCtrl = TextEditingController(
-        text: parking?.userId?.toString() ?? '',
-      );
-
-      const typeOptions = {'1': 'Residente', '2': 'Visitante'};
-      const vehicleOptions = {'1': 'Automóvil', '2': 'Moto'};
-      const statusOptions = {
-        '1': 'Disponible',
-        '2': 'Ocupado',
-        '3': 'Reservado',
-      };
-
-      // Map parking values to dropdown keys
-      String? typeValue;
-      String? vehicleValue;
-      String? statusValue;
-
-      if (parking != null) {
-        // Type mapping
-        final parkingTypeLower = parking.parkingType.toLowerCase();
-        if (parkingTypeLower.contains('residente') || parkingTypeLower.contains('resident')) {
-          typeValue = '1';
-        } else if (parkingTypeLower.contains('visitante') || parkingTypeLower.contains('visitor')) {
-          typeValue = '2';
-        }
-
-        // Vehicle mapping
-        final vehicleTypeLower = parking.vehicleType.toLowerCase();
-        if (vehicleTypeLower.contains('auto') || vehicleTypeLower.contains('car')) {
-          vehicleValue = '1';
-        } else if (vehicleTypeLower.contains('moto') || vehicleTypeLower.contains('motorcycle')) {
-          vehicleValue = '2';
-        }
-
-        // Status mapping
-        final statusLower = parking.status.toLowerCase();
-        if (statusLower.contains('disponible') || statusLower.contains('available')) {
-          statusValue = '1';
-        } else if (statusLower.contains('ocupado') || statusLower.contains('occupied')) {
-          statusValue = '2';
-        } else if (statusLower.contains('reservado') || statusLower.contains('reserved')) {
-          statusValue = '3';
-        }
-      }
-
-      return StatefulBuilder(
-        builder: (ctx, setInnerState) {
-          final formKey = GlobalKey<FormState>();
-          return AlertDialog(
-            backgroundColor: const Color(0xFFF2F3FF),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  switch (mode) {
-                    'add' => 'Añadir Parqueadero',
-                    'edit' => 'Editar Parqueadero',
-                    _ => 'Detalle de Parqueadero',
-                  },
-                  style: const TextStyle(
-                    color: secondaryColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Divider(height: 1, color: secondaryColor),
-              ],
-            ),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: numberCtrl,
-                    enabled: !isView,
-                    decoration: _fieldDecoration('Número'),
-                    validator: isView
-                        ? null
-                        : (value) => (value == null || value.trim().isEmpty)
-                              ? 'Ingrese el número'
-                              : null,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: typeValue,
-                    decoration: _fieldDecoration('Tipo de Parqueadero'),
-                    items: typeOptions.entries
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: isView
-                        ? null
-                        : (value) => setInnerState(() => typeValue = value),
-                    validator: isView || typeOptions.isEmpty
-                        ? null
-                        : (value) =>
-                              value == null ? 'Seleccione un tipo' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: vehicleValue,
-                    decoration: _fieldDecoration('Tipo de Vehículo'),
-                    items: vehicleOptions.entries
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: isView
-                        ? null
-                        : (value) =>
-                              setInnerState(() => vehicleValue = value),
-                    validator: isView
-                        ? null
-                        : (value) => value == null
-                              ? 'Seleccione el tipo de vehículo'
-                              : null,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: statusValue,
-                    decoration: _fieldDecoration('Estado'),
-                    items: statusOptions.entries
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: isView
-                        ? null
-                        : (value) => setInnerState(() => statusValue = value),
-                    validator: isView
-                        ? null
-                        : (value) =>
-                              value == null ? 'Seleccione el estado' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: userCtrl,
-                    enabled: !isView,
-                    decoration: _fieldDecoration('ID de Usuario (opcional)'),
-                    keyboardType: TextInputType.number,
-                    validator: isView
-                        ? null
-                        : (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return null;
-                            }
-                            return int.tryParse(value.trim()) == null
-                                ? 'Ingrese un número válido'
-                                : null;
-                          },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cerrar'),
-              ),
-              if (!isView)
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: secondaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  onPressed: () async {
-                    if (!(formKey.currentState?.validate() ?? false)) return;
-                    // Create payload with proper API format (all as numbers)
-                    final apiPayload = {
-                      'number': numberCtrl.text.trim(),
-                      'type_id': int.parse(typeValue ?? '1'), // Send as number
-                      'vehicle_type_id': int.parse(vehicleValue ?? '1'), // Send as number
-                      'status_id': int.parse(statusValue ?? '1'), // Send as number
-                      if (userCtrl.text.trim().isNotEmpty) 
-                        'user_id': int.parse(userCtrl.text.trim()),
-                    };
-                    
-                    try {
-                      if (isEdit) {
-                        await _service.update(parking!.id, apiPayload);
-                      } else {
-                        await _service.create(apiPayload);
-                      }
-                      if (!mounted) return;
-                      Navigator.pop(context);
-                      setState(() {
-                        _future = _service.fetchAll();
-                      });
-                    } catch (e) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  },
-                  child: Text(isEdit ? 'Guardar' : 'Añadir'),
-                ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
   Widget _buildParkingSection({
     required String title,
     required List<Widget> items,
@@ -624,7 +578,8 @@ Future<void> _showParkingForm(String mode, {Parking? parking}) {
                       ),
                       if (isAdmin) ...[
                         GestureDetector(
-                          onTap: () => _showParkingForm('edit', parking: parking),
+                          onTap: () =>
+                              _showParkingForm('edit', parking: parking),
                           child: const Row(
                             children: [
                               Icon(Icons.edit, color: accentColor, size: 20),
@@ -692,6 +647,8 @@ Future<void> _showParkingForm(String mode, {Parking? parking}) {
   Widget build(BuildContext context) {
     final future = _future;
     final isAdmin = context.watch<AuthProvider>().role == UserRole.admin;
+    final isOwner = context.watch<AuthProvider>().role == UserRole.owner;
+
     return Scaffold(
       backgroundColor: lightBackground,
       body: FutureBuilder<List<Parking>>(
@@ -757,6 +714,26 @@ Future<void> _showParkingForm(String mode, {Parking? parking}) {
                           icon: const Icon(Icons.add, color: Colors.white),
                           label: const Text(
                             'Añadir',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: secondaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20.0),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            minimumSize: const Size(0, 40),
+                          ),
+                          onPressed: () => _showParkingForm('add'),
+                        ),
+                      if (isOwner)
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.add, color: Colors.white),
+                          label: const Text(
+                            'Reservar',
                             style: TextStyle(color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
