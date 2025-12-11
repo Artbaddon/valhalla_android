@@ -366,4 +366,3 @@ class _ReservationRow extends StatelessWidget {
     );
   }
 }
-

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
 import 'package:valhalla_android/services/payment_service.dart';
+import 'package:valhalla_android/services/owner_service.dart';
 import 'package:valhalla_android/utils/colors.dart';
-
 
 class PaymentCreatePage extends StatefulWidget {
   const PaymentCreatePage({super.key});
@@ -14,34 +14,72 @@ class PaymentCreatePage extends StatefulWidget {
 }
 
 class _PaymentCreatePageState extends State<PaymentCreatePage> {
-  static const List<String> _paymentTypes = [
-    'MAINTENANCE',
-    'PARKING',
-    'RESERVATION',
-    'OTHER',
-  ];
-
   static const TextStyle _labelStyle = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     color: AppColors.purple,
   );
 
+  List<Map<String, dynamic>> owners = [];
+  bool loadingOwners = false;
+  String? selectedOwnerId;
+
   final _formKey = GlobalKey<FormState>();
   final _amountCtrl = TextEditingController();
-  final _ownerCtrl = TextEditingController();
-  final _descriptionCtrl = TextEditingController();
   final PaymentService _service = PaymentService();
 
-  String _selectedType = _paymentTypes.first;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOwners();
+  }
 
   @override
   void dispose() {
     _amountCtrl.dispose();
-    _ownerCtrl.dispose();
-    _descriptionCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadOwners() async {
+    if (loadingOwners) return;
+    if (!mounted) return;
+
+    setState(() {
+      loadingOwners = true;
+    });
+
+    try {
+      final ownerService = OwnerService();
+      final response = await ownerService.getAllOwners();
+
+      if (!mounted) return;
+
+      // ✅ SIMPLE - Eliminar duplicados por ID
+      final seenIds = <int>{};
+      final ownersList = <Map<String, dynamic>>[];
+
+      for (final owner in response) {
+        if (!seenIds.contains(owner.ownerId)) {
+          seenIds.add(owner.ownerId);
+          ownersList.add({'id': owner.ownerId, 'name': owner.fullName});
+        }
+      }
+
+      setState(() {
+        owners = ownersList;
+        loadingOwners = false;
+      });
+    } catch (e) {
+      print('Error: $e');
+      if (!mounted) return;
+      setState(() => loadingOwners = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   InputDecoration _inputDecoration(String hint, {Widget? suffix}) {
@@ -58,6 +96,19 @@ class _PaymentCreatePageState extends State<PaymentCreatePage> {
     );
   }
 
+  InputDecoration _fieldDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+    );
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     final form = _formKey.currentState;
@@ -68,28 +119,24 @@ class _PaymentCreatePageState extends State<PaymentCreatePage> {
 
     final normalizedAmount = _amountCtrl.text.replaceAll(',', '.');
     final amount = double.tryParse(normalizedAmount);
-    final ownerId = int.tryParse(_ownerCtrl.text.trim());
 
     if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingrese un monto válido.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ingrese un monto válido.')));
       return;
     }
-    if (ownerId == null || ownerId <= 0) {
+    if (selectedOwnerId == null || selectedOwnerId!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingrese un ID de propietario válido.')),
+        const SnackBar(content: Text('Debe seleccionar un propietario')),
       );
       return;
     }
 
     final payload = {
       'amount': amount,
-      'owner_id': ownerId,
-      'payment_type': _selectedType,
-      'description': _descriptionCtrl.text.trim().isEmpty
-          ? null
-          : _descriptionCtrl.text.trim(),
+      'owner_id': int.parse(selectedOwnerId!),
+      'payment_type': 'ADMINISTRACION', // Tipo fijo
     };
 
     setState(() => _submitting = true);
@@ -113,9 +160,9 @@ class _PaymentCreatePageState extends State<PaymentCreatePage> {
       } else {
         message = e.toString();
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -128,13 +175,10 @@ class _PaymentCreatePageState extends State<PaymentCreatePage> {
     final auth = context.watch<AuthProvider>();
     final role = auth.role;
     if (role == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -183,7 +227,10 @@ class _PaymentCreatePageState extends State<PaymentCreatePage> {
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: _amountCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: _inputDecoration('Ej. 1000.00'),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
@@ -198,69 +245,115 @@ class _PaymentCreatePageState extends State<PaymentCreatePage> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            Text('Propietario (ID)', style: _labelStyle),
+                            Text('Propietario', style: _labelStyle),
                             const SizedBox(height: 6),
-                            TextFormField(
-                              controller: _ownerCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: _inputDecoration('Ej. 1'),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Requerido';
-                                }
-                                final parsed = int.tryParse(value.trim());
-                                if (parsed == null || parsed <= 0) {
-                                  return 'ID inválido';
-                                }
-                                return null;
-                              },
+                            DropdownButtonFormField<String>(
+                              value: selectedOwnerId,
+                              decoration: _fieldDecoration(
+                                'Seleccione un propietario',
+                              ),
+                              validator: (value) =>
+                                  value == null ? 'Requerido' : null,
+                              items: [
+                                // Estado de carga
+                                if (loadingOwners)
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Cargando propietarios...'),
+                                      ],
+                                    ),
+                                  ),
+
+                                // Estado vacío (después de cargar)
+                                if (!loadingOwners && owners.isEmpty)
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text(
+                                      'No hay propietarios disponibles',
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ),
+
+                                // Estado cargado - mostrar owners
+                                if (!loadingOwners && owners.isNotEmpty)
+                                  ...owners.map((owner) {
+                                    return DropdownMenuItem(
+                                      value: owner['id'].toString(),
+                                      child: Text(
+                                        owner['name'] ?? 'Sin nombre',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                              ],
+                              onChanged: loadingOwners || owners.isEmpty
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        selectedOwnerId = value;
+                                      });
+                                    },
                             ),
                             const SizedBox(height: 16),
                             Text('Tipo de pago', style: _labelStyle),
                             const SizedBox(height: 6),
-                            DropdownButtonFormField<String>(
-                              value: _selectedType,
-                              items: _paymentTypes
-                                  .map((type) => DropdownMenuItem(
-                                        value: type,
-                                        child: Text(type),
-                                      ))
-                                  .toList(),
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() => _selectedType = value);
-                              },
-                              decoration: _inputDecoration('Seleccione un tipo'),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'ADMINISTRACION',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.purple,
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: 16),
-                            Text('Descripción', style: _labelStyle),
-                            const SizedBox(height: 6),
-                            TextFormField(
-                              controller: _descriptionCtrl,
-                              decoration: _inputDecoration('Opcional'),
-                              maxLines: 3,
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _submitting ? null : _submit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.purple,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                                child: Text(
+                                  _submitting ? 'Guardando...' : 'Crear pago',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submitting ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.purple,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    child: Text(
-                      _submitting ? 'Guardando...' : 'Crear pago',
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
                 ),

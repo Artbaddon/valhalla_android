@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:valhalla_android/models/visitor/visitor_model.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
 import 'package:valhalla_android/services/visitor_service.dart';
+import 'package:valhalla_android/services/owner_service.dart';
 import 'package:valhalla_android/utils/navigation_config.dart';
 
 const Color secondaryColor = Color.fromRGBO(73, 76, 162, 1);
@@ -23,6 +24,9 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
   late Future<List<Visitor>> _future;
   UserRole? _role;
   int? _ownerId;
+  List<Map<String, dynamic>> owners = [];
+  bool loadingOwners = false;
+  String? selectedOwnerId;
 
   final TextEditingController _searchCtrl = TextEditingController();
   Timer? _debounce;
@@ -31,6 +35,7 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
   @override
   void initState() {
     super.initState();
+    _loadOwners();
     _future = Future.value(const <Visitor>[]);
     _searchCtrl.addListener(() {
       _debounce?.cancel();
@@ -39,6 +44,46 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
         setState(() => _query = _searchCtrl.text.trim());
       });
     });
+  }
+
+  Future<void> _loadOwners() async {
+    if (loadingOwners) return;
+    if (!mounted) return;
+
+    setState(() {
+      loadingOwners = true;
+    });
+
+    try {
+      final ownerService = OwnerService();
+      final response = await ownerService.getAllOwners();
+
+      if (!mounted) return;
+
+      // ✅ SIMPLE - Eliminar duplicados por ID
+      final seenIds = <int>{};
+      final ownersList = <Map<String, dynamic>>[];
+
+      for (final owner in response) {
+        if (!seenIds.contains(owner.ownerId)) {
+          seenIds.add(owner.ownerId);
+          ownersList.add({'id': owner.ownerId, 'name': owner.fullName});
+        }
+      }
+
+      setState(() {
+        owners = ownersList;
+        loadingOwners = false;
+      });
+    } catch (e) {
+      print('Error: $e');
+      if (!mounted) return;
+      setState(() => loadingOwners = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
@@ -127,64 +172,80 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
   }
 
   void _showVisitorDetail(int id) {
+    // Primero obtenemos el visitor ANTES de mostrar el diálogo
+    final visitorFuture = _service.fetchById(id);
+
+    // Usamos showDialog directamente sin StatefulBuilder innecesario
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFFF2F3FF),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Detalle de visitante',
-          style: TextStyle(color: secondaryColor, fontWeight: FontWeight.w700),
-        ),
-        content: FutureBuilder<Visitor>(
-          future: _service.fetchById(id),
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const SizedBox(
+      builder: (BuildContext context) {
+        return FutureBuilder<Visitor>(
+          future: visitorFuture,
+          builder: (context, snapshot) {
+            Widget content;
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              content = const SizedBox(
                 height: 80,
                 child: Center(child: CircularProgressIndicator()),
               );
+            } else if (snapshot.hasError) {
+              content = Text('Error: ${snapshot.error}');
+            } else if (!snapshot.hasData) {
+              content = const Text('No se encontró el visitante');
+            } else {
+              final v = snapshot.data!;
+              content = Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Nombre: ${v.name}'),
+                  const SizedBox(height: 8),
+                  Text('Documento: ${v.documentNumber}'),
+                  const SizedBox(height: 8),
+                  Text('Anfitrión: ${v.hostName} (#${v.hostId ?? '—'})'),
+                  const SizedBox(height: 8),
+                  Text('Estado: ${v.status ?? '—'}'),
+                  const SizedBox(height: 8),
+                  Text('Entrada: ${_fmtDate(v.enterDate)}'),
+                  const SizedBox(height: 8),
+                  Text('Salida: ${_fmtDate(v.exitDate)}'),
+                ],
+              );
             }
-            if (snap.hasError) {
-              return Text('Error: ${snap.error}');
-            }
-            final v = snap.data!;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('ID: ${v.id}'),
-                Text('Nombre: ${v.name}'),
-                Text('Documento: ${v.documentNumber}'),
-                Text('Anfitrión: ${v.hostName} (#${v.hostId ?? '—'})'),
-                Text('Estado: ${v.status ?? '—'}'),
-                Text('Entrada: ${_fmtDate(v.enterDate)}'),
-                Text('Salida: ${_fmtDate(v.exitDate)}'),
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFFF2F3FF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: const Text(
+                'Detalle de visitante',
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              content: content,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: secondaryColor,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  child: const Text('Cerrar'),
+                ),
               ],
             );
           },
-        ),
-        actionsPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: secondaryColor,
-              textStyle: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Future<void> _showCreateDialog() async {
     final formKey = GlobalKey<FormState>();
-    final hostCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
     final documentCtrl = TextEditingController();
     bool submitting = false;
@@ -193,8 +254,15 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
       final form = formKey.currentState;
       if (form == null || !form.validate()) return;
 
+      if (selectedOwnerId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Por favor seleccione un propietario')),
+        );
+        return;
+      }
+
       final payload = {
-        'host_id': int.parse(hostCtrl.text.trim()),
+        'host_id': int.parse(selectedOwnerId!),
         'visitor_name': nameCtrl.text.trim(),
         'document_number': documentCtrl.text.trim(),
       };
@@ -248,19 +316,64 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextFormField(
-                        controller: hostCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: _fieldDecoration('ID del anfitrión'),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Requerido';
-                          }
-                          if (int.tryParse(value.trim()) == null) {
-                            return 'Debe ser un número';
-                          }
-                          return null;
-                        },
+                      DropdownButtonFormField<String>(
+                        value: selectedOwnerId,
+                        decoration: _fieldDecoration(
+                          'Seleccione un propietario',
+                        ),
+                        validator: (value) =>
+                            value == null ? 'Requerido' : null,
+                        items: [
+                          // Estado de carga
+                          if (loadingOwners)
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Cargando propietarios...'),
+                                ],
+                              ),
+                            ),
+
+                          // Estado vacío (después de cargar)
+                          if (!loadingOwners && owners.isEmpty)
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text(
+                                'No hay propietarios disponibles',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ),
+
+                          // Estado cargado - mostrar owners
+                          if (!loadingOwners && owners.isNotEmpty)
+                            ...owners.map((owner) {
+                              return DropdownMenuItem(
+                                value: owner['id'].toString(),
+                                child: Text(
+                                  owner['name'] ?? 'Sin nombre',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                        ],
+                        onChanged: loadingOwners || owners.isEmpty
+                            ? null
+                            : (value) {
+                                setState(() {
+                                  selectedOwnerId = value;
+                                });
+                              },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -282,127 +395,6 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                       ),
                     ],
                   ),
-                ),
-              ),
-              actionsPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              actions: [
-                TextButton(
-                  onPressed: submitting ? null : () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: secondaryColor,
-                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: secondaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  onPressed: submitting ? null : () => submit(setStateDialog),
-                  child: submitting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Guardar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _showStatusDialog(Visitor visitor) async {
-    final formKey = GlobalKey<FormState>();
-    String status = visitor.status ?? 'pending';
-    bool submitting = false;
-
-    Future<void> submit(StateSetter setStateDialog) async {
-      final form = formKey.currentState;
-      if (form == null || !form.validate()) return;
-
-      final payload = {'status': status};
-
-      setStateDialog(() => submitting = true);
-      try {
-        await _service.updateStatus(visitor.id, payload);
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Estado actualizado')));
-        await _refresh();
-      } on DioException catch (e) {
-        if (!mounted) return;
-        final message =
-            e.response?.data is Map &&
-                (e.response!.data as Map)['error'] is String
-            ? (e.response!.data as Map)['error'] as String
-            : e.message ?? 'Error al actualizar';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
-      } finally {
-        if (mounted) {
-          setStateDialog(() => submitting = false);
-        }
-      }
-    }
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (dialogContext, setStateDialog) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFFF2F3FF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              title: const Text(
-                'Actualizar estado',
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              content: Form(
-                key: formKey,
-                child: DropdownButtonFormField<String>(
-                  value: status,
-                  decoration: _fieldDecoration('Estado'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'pending',
-                      child: Text('Pendiente'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'authorized',
-                      child: Text('Autorizado'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'checked_out',
-                      child: Text('Salida registrada'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setStateDialog(() => status = value);
-                  },
                 ),
               ),
               actionsPadding: const EdgeInsets.symmetric(
@@ -477,7 +469,7 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: secondaryColor, 
+                        color: secondaryColor,
                       ),
                     ),
                     if (_canManage)
@@ -563,14 +555,6 @@ class _AdminVisitorsPageState extends State<AdminVisitorsPage> {
                                     tooltip: 'Ver',
                                     onPressed: () => _showVisitorDetail(v.id),
                                   ),
-                                  if (_canManage)
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit_note_outlined,
-                                      ),
-                                      tooltip: 'Actualizar estado',
-                                      onPressed: () => _showStatusDialog(v),
-                                    ),
                                 ],
                               ),
                             ),

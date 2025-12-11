@@ -137,7 +137,7 @@ class _EmailField extends StatelessWidget {
       controller: controller,
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
-        hintText: 'Ingrese Correo Electrónico',
+        hintText: 'Usuario',
         hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
         fillColor: Colors.white,
@@ -166,7 +166,7 @@ class _PasswordField extends StatelessWidget {
       obscureText: true,
       style: const TextStyle(color: Colors.black),
       decoration: InputDecoration(
-        hintText: 'Ingrese Contraseña',
+        hintText: 'Contraseña',
         hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
         fillColor: Colors.white,

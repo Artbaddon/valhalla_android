@@ -8,8 +8,25 @@ class OwnerService {
 
   Future<List<Owner>> getAllOwners() async {
     final response = await _api.dio.get('/owners/details');
-    // 🚨 CORRECCIÓN: Cambiar "notifications" a "owners"
-    final data = response.data["owners"] as List; 
+    final data = response.data["owners"] as List;
     return data.map((json) => Owner.fromJson(json)).toList();
+  }
+
+  Future<List<Owner>> getOwner(int userId) async {
+    final response = await _api.dio.get(
+      '/owners/search',
+      queryParameters: {'user_id': userId},
+    );
+
+    final data = response.data;
+    if (data['owner'] is List) {
+      // Si es una lista
+      final ownerList = data['owner'] as List;
+      return ownerList.map((json) => Owner.fromJson(json)).toList();
+    } else {
+      // Si es un objeto individual, convertirlo a lista con un elemento
+      final ownerMap = data['owner'] as Map<String, dynamic>;
+      return [Owner.fromJson(ownerMap)];
+    }
   }
 }

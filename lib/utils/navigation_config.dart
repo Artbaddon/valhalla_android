@@ -97,7 +97,6 @@ final roleNavigation = {
       _NavKey.parking,
       _NavKey.reservations,
       _NavKey.payments,
-      _NavKey.packages,
     ],
     extraAllowed: const [
       AppRoutes.changePassword,

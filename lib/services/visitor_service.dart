@@ -9,22 +9,32 @@ class VisitorService {
     final res = await _dio.get('/visitors'); // adjust path
     final raw = res.data;
     final list = raw is List ? raw : (raw['visitors'] as List? ?? const []);
-    return list.map((e) => Visitor.fromJson(Map<String, dynamic>.from(e))).toList();
+    return list
+        .map((e) => Visitor.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 
   Future<List<Visitor>> fetchForOwner(int ownerId) async {
     final res = await _dio.get('/visitors/owner/$ownerId');
     final raw = res.data;
     final list = raw is List ? raw : (raw['visitors'] as List? ?? const []);
-    return list.map((e) => Visitor.fromJson(Map<String, dynamic>.from(e))).toList();
+    return list
+        .map((e) => Visitor.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 
   Future<Visitor> fetchById(int id) async {
-    final res = await _dio.get('/visitors/$id'); // adjust path
+    final res = await _dio.get('/visitors/$id');
     final raw = res.data;
-    final map = raw is Map && raw['data'] is Map
-        ? Map<String, dynamic>.from(raw['data'])
-        : Map<String, dynamic>.from(raw as Map);
+
+
+    // CORRECCIÓN: Buscar 'visitor' en lugar de 'data'
+    final map = raw is Map && raw['visitor'] is Map
+        ? Map<String, dynamic>.from(raw['visitor'])
+        : raw is Map
+        ? Map<String, dynamic>.from(raw)
+        : <String, dynamic>{};
+
     return Visitor.fromJson(map);
   }
 

@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:valhalla_android/models/payment/payment_model.dart';
 import 'package:valhalla_android/providers/auth_provider.dart';
-import 'package:valhalla_android/screens/payment/payment_methods_page.dart';
 import 'package:valhalla_android/services/payment_service.dart';
+import 'package:valhalla_android/screens/payment/payment_method_form_page.dart';
+import 'package:valhalla_android/services/owner_service.dart';
 import 'package:valhalla_android/utils/colors.dart';
 import 'package:valhalla_android/utils/navigation_config.dart';
 import 'package:valhalla_android/utils/routes.dart';
@@ -19,9 +20,11 @@ class PaymentsHomePage extends StatefulWidget {
 
 class _PaymentsHomePageState extends State<PaymentsHomePage> {
   final PaymentService _service = PaymentService();
+  final OwnerService _ownerService = OwnerService();
   Future<List<Payment>>? _future;
   UserRole? _futureRole;
   int? _futureOwnerId;
+  int? _currentOwnerId;
 
   @override
   void initState() {
@@ -35,45 +38,71 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
   Future<void> _refresh() async {
     final auth = context.read<AuthProvider>();
     final role = auth.role;
-    final ownerId = auth.user?.id;
+    final userId = auth.user?.id;
     if (role == null) return;
 
-    final next = role == UserRole.owner && ownerId != null
-        ? _service.fetchForOwner(ownerId)
+    // Usar el ownerId en lugar del userId para los pagos
+    final next = role == UserRole.owner && _currentOwnerId != null
+        ? _service.fetchForOwner(_currentOwnerId!) // ← Usar ownerId aquí
         : _service.fetchAll();
+
+    // Fetch del owner ID si no lo tenemos
+    if (role == UserRole.owner && userId != null && _currentOwnerId == null) {
+      final owners = await _ownerService.getOwner(userId);
+      if (owners.isNotEmpty) {
+        setState(() {
+          _currentOwnerId = owners.first.ownerId;
+        });
+      }
+    }
+
     setState(() {
       _future = next;
       _futureRole = role;
-      _futureOwnerId = role == UserRole.owner ? ownerId : null;
+      _futureOwnerId = role == UserRole.owner ? userId : null;
     });
     await next;
   }
 
-  String _formatAmount(num value) {
-    if (value is double && value % 1 != 0) {
-      return '\$${value.toStringAsFixed(2)}';
-    }
-    return '\$${value.toString()}';
-  }
-
-  void _scheduleLoad(UserRole? role, int? ownerId) {
+  void _scheduleLoad(UserRole? role, int? userId) {
     if (role == null) return;
-    final desiredOwnerId = role == UserRole.owner ? ownerId : null;
+    final desiredOwnerId = role == UserRole.owner ? userId : null;
     if (_future != null &&
         _futureRole == role &&
         _futureOwnerId == desiredOwnerId) {
       return;
     }
 
-    final future = role == UserRole.owner && ownerId != null
-        ? _service.fetchForOwner(ownerId)
-        : _service.fetchAll();
+    // Primero obtener el ownerId, luego cargar los pagos
+    if (role == UserRole.owner && userId != null && _currentOwnerId == null) {
+      _ownerService.getOwner(userId).then((owners) {
+        if (mounted && owners.isNotEmpty) {
+          final ownerId = owners.first.ownerId;
+          setState(() {
+            _currentOwnerId = ownerId;
+          });
 
-    setState(() {
-      _future = future;
-      _futureRole = role;
-      _futureOwnerId = desiredOwnerId;
-    });
+          // Ahora cargar los pagos con el ownerId correcto
+          final future = _service.fetchForOwner(ownerId);
+          setState(() {
+            _future = future;
+            _futureRole = role;
+            _futureOwnerId = desiredOwnerId;
+          });
+        }
+      });
+    } else {
+      // Si ya tenemos el ownerId o no es owner, cargar normalmente
+      final future = role == UserRole.owner && _currentOwnerId != null
+          ? _service.fetchForOwner(_currentOwnerId!)
+          : _service.fetchAll();
+
+      setState(() {
+        _future = future;
+        _futureRole = role;
+        _futureOwnerId = desiredOwnerId;
+      });
+    }
   }
 
   @override
@@ -100,29 +129,75 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
       children: [
         const SizedBox(height: 8),
         Padding(
-          // <-- Agregamos el Padding aquí
-          padding: const EdgeInsets.only(
-            left: 16,
-          ), // <-- Definimos el padding solo a la izquierda
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: ElevatedButton(
-              onPressed: () => context.push(AppRoutes.paymentHistory),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.purple,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 6,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              if (isAdmin)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      context.push(AppRoutes.paymentCreate);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.purple,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    child: const Text(
+                      'Crear pago',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+              if (isAdmin && isOwner) const SizedBox(height: 8),
+              if (isOwner)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final currentUserId = auth.user?.id;
+                        if (currentUserId != null && _currentOwnerId != null) {
+                          context.push(
+                            AppRoutes.paymentHistory,
+                            extra: _currentOwnerId,
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'No se encontró información del propietario',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error al cargar el historial: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.purple,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    child: const Text(
+                      'Historial',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Historial',
-                style: TextStyle(fontSize: 12, color: Colors.white),
-              ),
-            ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -155,12 +230,10 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Center(child: Text('No hay pagos')),
+                        child: const Center(
+                          child: Text('No tienes pagos pendientes'),
+                        ),
                       ),
-                      if (isAdmin) ...[
-                        const SizedBox(height: 16),
-                        _AdminCreateButton(onCreated: _refresh),
-                      ],
                     ],
                   ),
                 );
@@ -174,36 +247,27 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
                     horizontal: 16,
                     vertical: 12,
                   ),
-                  itemCount: items.length + (isAdmin ? 1 : 0),
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    if (isAdmin && index == items.length) {
-                      return _AdminCreateButton(onCreated: _refresh);
-                    }
-
                     final payment = items[index];
-                    final title = payment.referenceNumber.isNotEmpty
-                        ? payment.referenceNumber
-                        : 'Pago ${payment.id}';
-
-                    return _PaymentItemCard(
-                      title: title,
-                      amount: _formatAmount(payment.totalPayment),
-                      status: payment.statusName,
-                      onContinue: isOwner
-                          ? () {
-                              context
-                                  .push<bool>(
-                                    AppRoutes.paymentMethods,
-                                    extra: PaymentMethodsArgs(payment: payment),
-                                  )
-                                  .then((result) {
-                                    if (result == true) {
-                                      _refresh();
-                                    }
-                                  });
-                            }
-                          : null,
+                    return _PaymentCard(
+                      payment: payment,
+                      isOwner: isOwner,
+                      onPay: () {
+                        context
+                            .push<bool>(
+                              AppRoutes.paymentMake, // ← Cambiado a paymentMake
+                              extra: PaymentMakeArgs(
+                                payment: payment,
+                              ), // ← Cambiado a PaymentMakeArgs
+                            )
+                            .then((result) {
+                              if (result == true) {
+                                _refresh();
+                              }
+                            });
+                      },
                     );
                   },
                 ),
@@ -216,53 +280,163 @@ class _PaymentsHomePageState extends State<PaymentsHomePage> {
   }
 }
 
-class _PaymentItemCard extends StatelessWidget {
-  const _PaymentItemCard({
-    required this.title,
-    required this.amount,
-    required this.status,
-    required this.onContinue,
-  });
+class _PaymentCard extends StatelessWidget {
+  final Payment payment;
+  final bool isOwner;
+  final VoidCallback onPay;
 
-  final String title;
-  final String amount;
-  final String status;
-  final VoidCallback? onContinue;
+  const _PaymentCard({
+    required this.payment,
+    required this.isOwner,
+    required this.onPay,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final date = payment.date?.toLocal() ?? DateTime.now();
+    final formattedDate =
+        '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: AppColors.lila,
+      elevation: 2,
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
+            // Primera fila: Referencia y Estado
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  payment.referenceNumber.isNotEmpty
+                      ? payment.referenceNumber
+                      : 'Pago ${payment.id}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(payment.statusName),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    payment.statusName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            Text(
-              'Total: $amount',
-              style: const TextStyle(fontSize: 14, color: Colors.black),
+
+            // Segunda fila: Método de pago y Monto
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Método',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        payment.method,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Total',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '\$${payment.amount.toStringAsFixed(0)} ${payment.currency}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Estado: $status',
-              style: const TextStyle(fontSize: 12, color: Colors.black87),
+            const SizedBox(height: 12),
+
+            // Tercera fila: Nombre y Fecha
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Propietario',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        payment.ownerName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Fecha',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formattedDate,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            if (onContinue != null) ...[
+
+            // Botón Pagar (solo para owners)
+            if (isOwner) ...[
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerRight,
                 child: ElevatedButton(
-                  onPressed: onContinue,
+                  onPressed: onPay,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.purple,
                     padding: const EdgeInsets.symmetric(
@@ -287,29 +461,20 @@ class _PaymentItemCard extends StatelessWidget {
   }
 }
 
-class _AdminCreateButton extends StatelessWidget {
-  const _AdminCreateButton({required this.onCreated});
-
-  final Future<void> Function() onCreated;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () async {
-          context.push(AppRoutes.paymentCreate);
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.purple,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-        ),
-        child: const Text(
-          'Crear pago',
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
-      ),
-    );
+// Función para obtener color según el estado
+Color _getStatusColor(String statusName) {
+  switch (statusName.toLowerCase()) {
+    case 'completado':
+    case 'approved':
+      return Colors.green;
+    case 'pendiente':
+    case 'pending':
+      return Colors.orange;
+    case 'rechazado':
+    case 'declined':
+    case 'error':
+      return Colors.red;
+    default:
+      return Colors.grey;
   }
 }

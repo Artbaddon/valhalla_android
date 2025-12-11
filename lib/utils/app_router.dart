@@ -19,8 +19,6 @@ import 'package:valhalla_android/screens/payment/payment_create_page.dart'
 import 'package:valhalla_android/screens/payment/payment_history_page.dart';
 import 'package:valhalla_android/screens/payment/payment_method_form_page.dart'
     as payment_make;
-import 'package:valhalla_android/screens/payment/payment_methods_page.dart'
-    as payment_methods;
 import 'package:valhalla_android/screens/payment/payments_home_page.dart';
 import 'package:valhalla_android/screens/reservation/reservation_form_page.dart';
 import 'package:valhalla_android/screens/reservation/reservations_home_page.dart';
@@ -35,9 +33,7 @@ class AppRouter {
       initialLocation: AppRoutes.login,
       debugLogDiagnostics: true,
       navigatorKey: NavigationService.instance.navigatorKey,
-      refreshListenable: Listenable.merge([
-        context.read<AuthProvider>(),
-      ]),
+      refreshListenable: Listenable.merge([context.read<AuthProvider>()]),
       redirect: (ctx, state) {
         final auth = ctx.read<AuthProvider>();
         final role = auth.role;
@@ -63,7 +59,8 @@ class AppRouter {
           return config.homeRoute;
         }
 
-        if (AppRoutes.homeRoutes.contains(location) && location != config.homeRoute) {
+        if (AppRoutes.homeRoutes.contains(location) &&
+            location != config.homeRoute) {
           return config.homeRoute;
         }
 
@@ -85,10 +82,7 @@ class AppRouter {
         return null;
       },
       routes: [
-        GoRoute(
-          path: AppRoutes.login,
-          builder: (ctx, s) => const LoginPage(),
-        ),
+        GoRoute(path: AppRoutes.login, builder: (ctx, s) => const LoginPage()),
         GoRoute(
           path: AppRoutes.recoverPassword,
           builder: (ctx, s) => const RecoverPage(),
@@ -121,18 +115,7 @@ class AppRouter {
           path: AppRoutes.paymentCreate,
           builder: (ctx, s) => const payment_create.PaymentCreatePage(),
         ),
-        GoRoute(
-          path: AppRoutes.paymentMethods,
-          builder: (ctx, s) {
-            final extra = s.extra;
-            if (extra is! payment_methods.PaymentMethodsArgs) {
-              return const Scaffold(
-                body: Center(child: Text('Método no disponible')),
-              );
-            }
-            return payment_methods.PaymentMethodsPage(args: extra);
-          },
-        ),
+        
         GoRoute(
           path: AppRoutes.paymentMake,
           builder: (ctx, s) {
@@ -151,7 +134,12 @@ class AppRouter {
         ),
         GoRoute(
           path: AppRoutes.paymentHistory,
-          builder: (ctx, s) => const PaymentHistoryPage(),
+          builder: (ctx, s) {
+            final ownerId = s.extra as int?;
+            return PaymentHistoryPage(
+              ownerId: ownerId ?? 0,
+            );
+          },
         ),
         GoRoute(
           path: AppRoutes.reservationsHome,
@@ -178,9 +166,8 @@ class AppRouter {
           builder: (ctx, s) => const AdminVisitorsPage(),
         ),
       ],
-      errorBuilder: (ctx, state) => const Scaffold(
-        body: Center(child: Text('Page not found')),
-      ),
+      errorBuilder: (ctx, state) =>
+          const Scaffold(body: Center(child: Text('Page not found'))),
     );
   }
 }

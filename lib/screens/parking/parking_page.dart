@@ -66,16 +66,28 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
     try {
       final ownerService = OwnerService();
-      final owners = await ownerService.getAllOwners();
+      // 1. Obtener todos los registros, que pueden incluir duplicados por usuario.
+      final ownersWithDuplicates = await ownerService.getAllOwners();
+
+      // 2. Usar un Map para eliminar duplicados, usando User_FK_ID (userFkId) como clave única.
+      final Map<int, Owner> uniqueOwnersMap = {};
+      for (final owner in ownersWithDuplicates) {
+        // Si un propietario (userFkId) ya existe, se sobrescribe, manteniendo solo uno.
+        uniqueOwnersMap[owner.userFkId] = owner;
+      }
+
+      // 3. Obtener la lista de valores únicos del Map.
+      final uniqueOwners = uniqueOwnersMap.values.toList();
+
       setState(() {
-        _owners = owners;
+        // Asignar la lista de propietarios únicos
+        _owners = uniqueOwners;
         _loadingOwners = false;
       });
     } catch (e) {
       setState(() {
         _loadingOwners = false;
       });
-      print('Error loading owners: $e');
     }
   }
 
@@ -154,13 +166,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
                 title: const Text('Todos'),
               ),
               RadioListTile<String?>(
-                value: 'resident',
+                value: 'Residente', // ← Cambiado a mayúscula
                 groupValue: _typeFilter,
                 onChanged: (v) => Navigator.pop(ctx, v),
                 title: const Text('Residentes'),
               ),
               RadioListTile<String?>(
-                value: 'visitor',
+                value: 'Visitante', // ← Cambiado a mayúscula
                 groupValue: _typeFilter,
                 onChanged: (v) => Navigator.pop(ctx, v),
                 title: const Text('Visitantes'),
@@ -647,7 +659,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
   Widget build(BuildContext context) {
     final future = _future;
     final isAdmin = context.watch<AuthProvider>().role == UserRole.admin;
-    final isOwner = context.watch<AuthProvider>().role == UserRole.owner;
 
     return Scaffold(
       backgroundColor: lightBackground,
@@ -729,26 +740,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
                           ),
                           onPressed: () => _showParkingForm('add'),
                         ),
-                      if (isOwner)
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text(
-                            'Reservar',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: secondaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20.0),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            minimumSize: const Size(0, 40),
-                          ),
-                          onPressed: () => _showParkingForm('add'),
-                        ),
                     ],
                   ),
                 ),
@@ -801,7 +792,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
                       label: Text(
                         _typeFilter == null
                             ? 'Filtros'
-                            : (_typeFilter == 'resident'
+                            : (_typeFilter == 'Residente'
                                   ? 'Residentes'
                                   : 'Visitantes'),
                         style: const TextStyle(color: textColor),

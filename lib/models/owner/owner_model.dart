@@ -10,7 +10,7 @@ class Owner {
   final String? userEmail;
 
   // Campos de Profile
-  final String? ownerName;
+  final String? ownerName; // Mantenemos ownerName pero mapeamos correctamente
   final String? profileDocumentType;
   final String? profileDocumentNumber;
   final String? profileTelephoneNumber;
@@ -33,36 +33,25 @@ class Owner {
     this.status,
   });
 
-  // =======================================================
-  // 🚀 FROMJSON ACTUALIZADO según la estructura del JSON
-  // =======================================================
   factory Owner.fromJson(Map<String, dynamic> json) {
     return Owner(
-      // Campos INT REQUERIDOS
       ownerId: (json["Owner_id"] as int?) ?? 0,
       userFkId: (json["User_FK_ID"] as int?) ?? 0,
       ownerIsTenant: (json["Owner_is_tenant"] as int?) ?? 0,
-
-      // Campos de fecha
       ownerBirthDate: json["Owner_birth_date"] as String?,
       ownerCreatedAt: json["Owner_createdAt"] as String?,
       ownerUpdatedAt: json["Owner_updatedAt"] as String?,
-
-      // Campos de Users
       userEmail: json["Users_email"] as String?,
-
-      // Campos de Profile
-      ownerName: json["owner_name"] as String?,
+      // ✅ CORREGIDO: ownerName ahora se mapea a Profile_fullName
+      ownerName: json["Profile_fullName"] as String?,
       profileDocumentType: json["Profile_document_type"] as String?,
       profileDocumentNumber: json["Profile_document_number"] as String?,
       profileTelephoneNumber: json["Profile_telephone_number"] as String?,
-
-      // Campo de status
       status: json["status"] as String?,
     );
   }
 
-  // ✅ PROPIEDADES CALCULADAS
+  // ✅ PROPIEDADES CALCULADAS (sin cambios)
   String get fullName => ownerName ?? 'Propietario $ownerId';
   String get residentType => ownerIsTenant == 1 ? 'Inquilino' : 'Propietario';
   String get safeEmail => userEmail ?? 'No especificado';
@@ -71,40 +60,8 @@ class Owner {
   String get safeDocumentType => profileDocumentType ?? 'No especificado';
   String get safeStatus => status ?? 'No especificado';
 
-  // Método para formatear la fecha de nacimiento (opcional)
-  String? get formattedBirthDate {
-    if (ownerBirthDate == null) return null;
-    try {
-      final date = DateTime.parse(ownerBirthDate!);
-      return '${date.day}/${date.month}/${date.year}';
-    } catch (e) {
-      return ownerBirthDate;
-    }
-  }
+  // ... resto de métodos igual que antes
 
-  // Método para obtener la edad (opcional)
-  int? get age {
-    if (ownerBirthDate == null) return null;
-    try {
-      final birthDate = DateTime.parse(ownerBirthDate!);
-      final now = DateTime.now();
-      int age = now.year - birthDate.year;
-      if (now.month < birthDate.month ||
-          (now.month == birthDate.month && now.day < birthDate.day)) {
-        age--;
-      }
-      return age;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  @override
-  String toString() {
-    return 'Owner{id: $ownerId, name: $fullName, email: $safeEmail, type: $residentType, status: $safeStatus}';
-  }
-
-  // Método para convertir a Map (útil para updates)
   Map<String, dynamic> toJson() {
     return {
       'Owner_id': ownerId,
@@ -114,7 +71,7 @@ class Owner {
       'Owner_createdAt': ownerCreatedAt,
       'Owner_updatedAt': ownerUpdatedAt,
       'Users_email': userEmail,
-      'owner_name': ownerName,
+      'Profile_fullName': ownerName, // ✅ Mapeo inverso correcto
       'Profile_document_type': profileDocumentType,
       'Profile_document_number': profileDocumentNumber,
       'Profile_telephone_number': profileTelephoneNumber,

@@ -33,4 +33,7 @@ class PackagesService {
   Future<void> updateStatus(String packageId, Map<String, dynamic> payload) async {
     await _dio.post('/packages/$packageId/status', data: payload);
   }
+  Future<void> delete(String packageId ) async {
+    await _dio.delete('/packages/$packageId',);
+  }
 }

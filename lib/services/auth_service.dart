@@ -46,54 +46,19 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> forgotPassword(String email) async {
-    try {
-      // 1. Datos que el endpoint espera
-      final Map<String, dynamic> data = {"email": email};
-
-      // 2. Realizar la solicitud POST con los datos en el cuerpo
-      final Response response = await _dio.post(
-        'auth/forgot-password',
-        data: data, // Aquí se envía el JSON {"email": "..."}
-      );
-
-      // 3. Manejar la respuesta exitosa
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // El cuerpo de la respuesta es accesible a través de response.data
-        final responseData = response.data;
-
-        // Extraer los datos específicos
-        final String resetToken = responseData['resetToken'];
-        final String expiresAt = responseData['expiresAt'];
-
-        // Devuelve un mapa con el token y la fecha de expiración
-        return {'resetToken': resetToken, 'expiresAt': expiresAt};
-      } else {
-        // Manejo de otros códigos de estado si es necesario
-        throw Exception(
-          'Failed to reset password: Status ${response.statusCode}',
-        );
-      }
-    } on DioException catch (e) {
-      String errorMessage = 'A network error occurred.';
-      if (e.response != null &&
-          e.response!.data is Map &&
-          e.response!.data.containsKey('message')) {
-        errorMessage = e.response!.data['message'];
-      } else if (e.message != null) {
-        errorMessage = e.message!;
-      }
-      return {'success': false, 'message': errorMessage};
-    } catch (e) {
-      // Manejo de cualquier otro error inesperado (ej. error de parsing local)
-      return {'success': false, 'message': 'An unexpected error occurred.'};
-    }
-  }
-
-  
   // Check if user is logged in
   Future<bool> isLoggedIn() async {
     final token = await StorageService.getToken();
     return token != null;
+  }
+
+  Future<void> changePassword(Map<String, dynamic> payload) async {
+    await _dio.post('/auth/change-password', data: payload);
+  }
+  Future<void> forgotPassword(Map<String, dynamic> payload) async {
+    await _dio.post('/auth/forgot-password', data: payload);
+  }
+  Future<void> resetPassword(Map<String, dynamic> payload) async {
+    await _dio.post('/auth/reset-password', data: payload);
   }
 }

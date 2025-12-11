@@ -1,21 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:valhalla_android/models/payment/payment_model.dart';
-import 'package:valhalla_android/providers/auth_provider.dart';
 import 'package:valhalla_android/services/payment_service.dart';
 import 'package:valhalla_android/utils/colors.dart';
-import 'package:valhalla_android/utils/navigation_config.dart';
-import 'package:valhalla_android/utils/routes.dart';
-import 'package:valhalla_android/widgets/navigation/app_bottom_nav.dart';
-import 'package:valhalla_android/widgets/navigation/top_navbar.dart';
+import 'PaymentVerificationPage.dart';
 
 class PaymentMakeArgs {
-  const PaymentMakeArgs({required this.payment, this.presetMethod});
+  const PaymentMakeArgs({required this.payment});
 
   final Payment payment;
-  final String? presetMethod;
 }
 
 class PaymentMakePage extends StatefulWidget {
@@ -28,100 +21,54 @@ class PaymentMakePage extends StatefulWidget {
 }
 
 class _PaymentMakePageState extends State<PaymentMakePage> {
-  static const List<String> _methodOptions = [
-    'CASH',
-    'CARD',
-    'TRANSFER',
-  ];
-
-  static const TextStyle _labelStyle = TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w500,
-    color: AppColors.purple,
-  );
-
   final _formKey = GlobalKey<FormState>();
-  final _paymentDateCtrl = TextEditingController();
+  final _phoneNumberCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final PaymentService _service = PaymentService();
 
-  String _selectedMethod = _methodOptions.first;
-  DateTime? _paymentDate;
   bool _submitting = false;
-
-  String _two(int value) => value.toString().padLeft(2, '0');
-
-  String _formatDate(DateTime date) => '${date.year}-${_two(date.month)}-${_two(date.day)}';
-
-  InputDecoration _inputDecoration(String hint, {Widget? suffix}) {
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: Colors.white,
-      suffixIcon: suffix,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    );
-  }
 
   @override
   void dispose() {
-    _paymentDateCtrl.dispose();
+    _phoneNumberCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    final preset = widget.args.presetMethod;
-    if (preset != null && _methodOptions.contains(preset)) {
-      _selectedMethod = preset;
-    }
-  }
-
-  Future<void> _pickDate() async {
-    FocusScope.of(context).unfocus();
-    final now = DateTime.now();
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: _paymentDate ?? now,
-      firstDate: DateTime(now.year - 1, 1, 1),
-      lastDate: DateTime(now.year + 1, 12, 31),
-    );
-    if (selected == null) return;
-
-    setState(() {
-      _paymentDate = selected;
-      _paymentDateCtrl.text = _formatDate(selected);
-    });
   }
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     final form = _formKey.currentState;
-    if (form == null) return;
-    if (!form.validate()) {
-      return;
-    }
+    if (form == null || !form.validate()) return;
 
+    // Preparar payload para makePayment
     final payload = {
-      'method': _selectedMethod,
-      if (_paymentDate != null) 'payment_date': _formatDate(_paymentDate!),
+      'customer_phone': _phoneNumberCtrl.text.trim(),
+      'customer_email': _emailCtrl.text.trim(),
+      'payment_id': widget.args.payment.id,
     };
 
     setState(() => _submitting = true);
+
     try {
-      await _service.makePayment(widget.args.payment.id, payload);
+      // 1. Hacer el pago
+      final makeResponse = await _service.makePayment(payload);
+
+      // Verificar si fue exitoso el makePayment
+      if (!makeResponse['success']) {
+        throw Exception('Error al iniciar el pago');
+      }
+
+      // Obtener la reference del pago
+      final reference = makeResponse['data']['reference'];
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pago registrado correctamente')),
-      );
-      Navigator.of(context).pop(true);
+
+      // 2. Navegar a pantalla de verificación
+      await _navigateToVerification(reference);
     } catch (e) {
       if (!mounted) return;
-      String message = 'Error al registrar el pago';
+
+      String message = 'Error al procesar el pago';
       if (e is DioException) {
         final data = e.response?.data;
         if (data is Map && data['error'] is String) {
@@ -132,197 +79,563 @@ class _PaymentMakePageState extends State<PaymentMakePage> {
       } else {
         message = e.toString();
       }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
       );
     } finally {
-      if (mounted) {
-        setState(() => _submitting = false);
-      }
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final role = auth.role;
-    if (role == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final config = roleNavigation[role]!;
-    final navItems = config.navItems;
-    final navIndex = navItems.indexWhere(
-      (item) => item.route == AppRoutes.paymentsHome,
-    );
-    final currentIndex = navIndex == -1 ? 0 : navIndex;
-
-    final payment = widget.args.payment;
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: TopNavbar(role: role),
-      bottomNavigationBar: AppBottomNav(
-        items: navItems,
-        currentIndex: currentIndex,
-        onTap: (index) {
-          final route = navItems[index].route;
-          context.go(route);
-        },
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    BackButton(),
-                    SizedBox(width: 8),
-                    Text(
-                      'Registrar pago',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.purple,
-                      ),
-                    ),
-                  ],
+  Future<void> _navigateToVerification(String reference) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentVerificationPage(
+          reference: reference,
+          onSuccess: () {
+            Navigator.pop(context); // Cerrar pantalla de verificación
+            _showSuccessDialog(); // Mostrar diálogo de éxito
+            Navigator.of(context).pop(true); // Volver a la pantalla anterior
+          },
+          onFailure: (error) {
+            Navigator.pop(context); // Cerrar pantalla de verificación
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Pago fallido: $error'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          },
+          onTimeout: () {
+            Navigator.pop(context); // Cerrar pantalla de verificación
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Tiempo de espera agotado. Verifica manualmente.',
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Card(
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Detalle del pago',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _DetailRow(
-                              label: 'Referencia',
-                              value: payment.referenceNumber.isNotEmpty
-                                  ? payment.referenceNumber
-                                  : '—',
-                            ),
-                            _DetailRow(
-                              label: 'Total',
-                              value: '\$${payment.totalPayment}',
-                            ),
-                            _DetailRow(label: 'Estado', value: payment.statusName),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'Información del pago',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text('Método', style: _labelStyle),
-                            const SizedBox(height: 6),
-                            DropdownButtonFormField<String>(
-                              value: _selectedMethod,
-                              decoration: _inputDecoration('Seleccione un método'),
-                              items: _methodOptions
-                                  .map((m) => DropdownMenuItem(
-                                        value: m,
-                                        child: Text(m),
-                                      ))
-                                  .toList(),
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() => _selectedMethod = value);
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            Text('Fecha de pago', style: _labelStyle),
-                            const SizedBox(height: 6),
-                            TextFormField(
-                              controller: _paymentDateCtrl,
-                              readOnly: true,
-                              decoration: _inputDecoration(
-                                'Opcional',
-                                suffix: const Icon(Icons.calendar_today, size: 18),
-                              ),
-                              onTap: _pickDate,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submitting ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.purple,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    child: Text(
-                      _submitting ? 'Guardando...' : 'Registrar pago',
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          },
         ),
       ),
     );
   }
-}
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: AppColors.black, height: 1.3),
+  Future<void> _showSuccessDialog() async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            TextSpan(
-              text: '$label: ',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                size: 50,
+                color: Colors.green,
+              ),
             ),
-            TextSpan(text: value),
+            const SizedBox(height: 20),
+            const Text(
+              '¡Pago Completado!',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'El pago ha sido aprobado exitosamente.\n'
+              'Recibirás un comprobante en tu correo.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true); // Volver a lista de pagos
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Aceptar',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final payment = widget.args.payment;
+    final amountFormatted =
+        '\$${payment.amount.toStringAsFixed(0)} ${payment.currency}';
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header con gradiente
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.purple.withOpacity(0.9),
+                    AppColors.purple.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Realizar Pago',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet_outlined,
+                              color: Colors.white.withOpacity(0.9),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'NEQUI',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Monto destacado
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Total a Pagar',
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          amountFormatted,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      // Tarjeta de detalles del pago
+                      Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.receipt_long_outlined,
+                                    color: AppColors.purple,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Detalles del Pago',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              _DetailItem(
+                                icon: Icons.confirmation_number_outlined,
+                                label: 'Referencia',
+                                value: payment.referenceNumber.isNotEmpty
+                                    ? payment.referenceNumber
+                                    : '—',
+                                color: Colors.blueAccent,
+                              ),
+                              const SizedBox(height: 12),
+
+                              _DetailItem(
+                                icon: Icons.credit_card_outlined,
+                                label: 'Monto',
+                                value: amountFormatted,
+                                color: Colors.greenAccent,
+                              ),
+                              const SizedBox(height: 12),
+
+                              _DetailItem(
+                                icon: Icons.info_outline,
+                                label: 'Estado',
+                                value: payment.statusName,
+                                color: _getStatusColor(payment.statusName),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Formulario de información
+                      Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.person_outline,
+                                    color: AppColors.purple,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Información de Contacto',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              Text(
+                                'Número de Teléfono',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _phoneNumberCtrl,
+                                decoration: InputDecoration(
+                                  hintText: 'Ej: 3001234567',
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                  prefixIcon: Container(
+                                    width: 50,
+                                    alignment: Alignment.center,
+                                    child: const Text(
+                                      '+57',
+                                      style: TextStyle(
+                                        color: AppColors.purple,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                keyboardType: TextInputType.phone,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Ingrese el número de teléfono';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 20),
+
+                              Text(
+                                'Correo Electrónico',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _emailCtrl,
+                                decoration: InputDecoration(
+                                  hintText: 'tucorreo@ejemplo.com',
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.email_outlined,
+                                    color: AppColors.purple.withOpacity(0.7),
+                                  ),
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Ingrese el correo electrónico';
+                                  }
+                                  if (!value.contains('@')) {
+                                    return 'Ingrese un correo válido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Botón de pago
+                      Container(
+                        width: double.infinity,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.purple.withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _submitting ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.purple,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_submitting)
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              else
+                                Icon(
+                                  Icons.lock_open_outlined,
+                                  color: Colors.white,
+                                ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _submitting ? 'Procesando...' : 'Pagar Ahora',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Texto de seguridad
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.shield_outlined,
+                            color: Colors.green,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Pago 100% seguro y encriptado',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pendiente':
+        return Colors.orangeAccent;
+      case 'aprobado':
+        return Colors.greenAccent;
+      case 'rechazado':
+        return Colors.redAccent;
+      default:
+        return Colors.grey;
+    }
+  }
 }
 
+class _DetailItem extends StatelessWidget {
+  const _DetailItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
 
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppColors.black,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
